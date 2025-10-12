@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:cybercart/pages/home.dart';
+// import 'package:cybercart/pages/home.dart';
+import 'package:cybercart/utils/nav_bar.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context, 
         MaterialPageRoute(
-          builder: (context) => MaterialHomePage(),
+          builder: (context) => NavigationMenu(),
         ),
       );
     });
