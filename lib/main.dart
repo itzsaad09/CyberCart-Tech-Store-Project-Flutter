@@ -1,3 +1,4 @@
+import 'package:cybercart/screens/splash_screen.dart';
 import 'package:cybercart/theme/dark.dart';
 import 'package:cybercart/theme/light.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class CyberCart extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      home: MaterialHomePage(),
+      home: SplashScreen(),
     );
   }
 }
