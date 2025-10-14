@@ -24,9 +24,12 @@ jobs:
       # 👇 Step 1: Get the latest version tag from your repo (e.g., v1.0.5)
       - name: Get latest tag
         id: latest_tag
-        uses: anothrNick/get-latest-tag@1.0.1
-        with:
-          initial_version: v1.0.0 # Fallback if no tags exist
+        run: |
+          TAG=$(git tag --sort=-v:refname | head -n 1)
+          if [ -z "$TAG" ]; then
+            TAG="v1.0.0"
+          fi
+          echo "tag_name_with_v=$TAG" >> $GITHUB_OUTPUT
 
       # 👇 Step 2: Calculate the next version number
       - name: Calculate next version
