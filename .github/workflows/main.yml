@@ -31,34 +31,20 @@ jobs:
           channel: 'stable'
           architecture: x64
 
-      - name: Build and Rename Android APK
-        run: |
-          flutter build apk --release --split-per-abi
-          cd build/app/outputs/apk/release
-          mv app-arm64-v8a-release.apk CyberCart-v1.0.${{ github.run_number }}.apk
+      - name: Build Android APK
+        run: flutter build apk --release --split-per-abi
 
-      - name: Build and Rename iOS IPA
+      - name: Build iOS IPA
         run: |
           flutter build ios --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
           mv Runner.app Payload/
           zip -r app.ipa Payload
-          mv app.ipa CyberCart-v1.0.${{ github.run_number }}.ipa
-
-      # ... (previous build steps are the same) ...
-
-      - name: Package Artifacts into a Zip file
-        run: |
-          mkdir -p release-package
-          cp build/app/outputs/apk/release/CyberCart-*.apk release-package/
-          cp build/ios/iphoneos/CyberCart-*.ipa release-package/
-          zip -r CyberCart-v1.0.${{ github.run_number }}.zip release-package
 
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          # 👇 Now we just upload the single zip file
-          artifacts: "CyberCart-v1.0.${{ github.run_number }}.zip"
+          artifacts: "build/app/outputs/apk/release/*.apk,build/ios/iphoneos/app.ipa"
           tag: v1.0.${{ github.run_number }}
           token: ${{ secrets.TOKEN }}
