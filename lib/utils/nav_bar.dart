@@ -1,69 +1,56 @@
-import 'package:cybercart/pages/home.dart';
 import 'package:flutter/material.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
+import 'package:cybercart/pages/home.dart';
 
-class NavigationMenu extends StatefulWidget {
-  const NavigationMenu({super.key});
+class CustomNavigationBar extends StatefulWidget {
+  const CustomNavigationBar({super.key});
 
   @override
-  State<NavigationMenu> createState() => _NavigationMenuState();
+  State<CustomNavigationBar> createState() => _CustomNavigationBarState();
 }
 
-class _NavigationMenuState extends State<NavigationMenu> {
+class _CustomNavigationBarState extends State<CustomNavigationBar> {
   int _selectedIndex = 0;
 
-  final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
-
-  final List<Widget> _screens = const [
-    MaterialHomePage(),
-
-    Text('Explore/Search View'),
-
-    Text('Cart View'),
-
-    Text('Profile View'),
+  // Add your existing pages in this list (no need to define them here)
+  final List<Widget> _pages = const [
+    HomeScreen(),
+    // TrackOrderPage(),
+    // CartPage(),
+    // ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final Color barColor = Theme.of(context).primaryColor;
-
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: _screens.elementAt(_selectedIndex),
-        ),
-      ),
-
+      extendBody: true,
+      body: _pages[_selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
-        key: _bottomNavigationKey,
-        index: _selectedIndex,
-        height: 75.0,
-        items: [
+        items: const [
           CurvedNavigationBarItem(
-            child: Icon(Icons.home_outlined, size: 30),
+            child: Icon(Icons.home_outlined),
             label: 'Home',
           ),
           CurvedNavigationBarItem(
-            child: Icon(Icons.search_outlined, size: 30),
-            label: 'Search',
+            child: Icon(Icons.delivery_dining_outlined),
+            label: 'Track',
           ),
           CurvedNavigationBarItem(
-            child: Icon(Icons.shopping_cart_outlined, size: 30),
+            child: Icon(Icons.shopping_cart_outlined),
             label: 'Cart',
           ),
           CurvedNavigationBarItem(
-            child: Icon(Icons.person_outlined, size: 30),
+            child: Icon(Icons.person_outlined),
             label: 'Profile',
           ),
         ],
-        color: barColor,
-        buttonBackgroundColor: barColor,
+        color: Theme.of(context).primaryColor,
         backgroundColor: Colors.transparent,
+        buttonBackgroundColor: Theme.of(context).primaryColor,
+        height: 65,
         animationCurve: Curves.easeInOut,
-        animationDuration: const Duration(milliseconds: 300),
-
+        index: _selectedIndex,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
