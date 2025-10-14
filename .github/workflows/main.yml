@@ -24,7 +24,7 @@ jobs:
       - name: Update Version
         run: |
           # Example: Changes 'version: 1.0.1+5' to 'version: 1.0.1+<run_number>'
-          sed -i '' "s/version: \(.*\)+[0-9]*/version: \0+${{ github.run_number }}/" pubspec.yaml
+          sed -i '' "s/version: \(.*\)+[0-9]*/version: \1+${{ github.run_number }}/" pubspec.yaml
 
       # 👇 Step 2: Commit the version change back to the repo
       - name: Commit version bump
