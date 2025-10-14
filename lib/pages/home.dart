@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:cybercart/utils/location_bar.dart';
 import 'package:cybercart/utils/search_bar.dart';

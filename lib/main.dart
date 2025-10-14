@@ -36,90 +36,6 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// class _HomeScreenState extends State<HomeScreen> {
-//   Timer? _hideTimer;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _startHideTimer();
-//   }
-
-//   void _startHideTimer() {
-//     _hideTimer?.cancel();
-//     _hideTimer = Timer(const Duration(seconds: 2), () {
-//       _hideSystemNavigation();
-//     });
-//   }
-
-//   void _hideSystemNavigation() {
-//     SystemChrome.setEnabledSystemUIMode(
-//       SystemUiMode.manual,
-//       overlays: [SystemUiOverlay.top],
-//     );
-//   }
-
-//   void _showSystemNavigation() {
-//     SystemChrome.setEnabledSystemUIMode(
-//       SystemUiMode.manual,
-//       overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-//     );
-//   }
-
-//   void _onUserInteraction() {
-//     _showSystemNavigation();
-//     _startHideTimer();
-//   }
-
-//   @override
-//   void dispose() {
-//     _hideTimer?.cancel();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final Brightness platformBrightness = MediaQuery.of(
-//       context,
-//     ).platformBrightness;
-//     final Brightness iconBrightness = platformBrightness == Brightness.dark
-//         ? Brightness.light
-//         : Brightness.dark;
-
-//     final Color primaryColor = Theme.of(context).primaryColor;
-//     // SystemUiOverlayStyle(
-//     //   statusBarColor: primaryColor,
-//     //   statusBarIconBrightness: iconBrightness,
-//     //   systemNavigationBarIconBrightness: iconBrightness,
-//     // );
-
-//     return GestureDetector(
-//       behavior: HitTestBehavior.translucent,
-//       onTap: _onUserInteraction,
-//       onPanDown: (_) => _onUserInteraction(),
-//       child: Scaffold(
-//         // appBar: AppBar(
-//         //   centerTitle: true,
-//         //   backgroundColor: primaryColor,
-//         //   systemOverlayStyle: SystemUiOverlayStyle(
-//         //     statusBarColor: primaryColor,
-//         //     statusBarIconBrightness: iconBrightness,
-//         //     systemNavigationBarIconBrightness: iconBrightness,
-//         //   ),
-//         //   title: const Text("CyberCart"),
-//         // ),
-//         // body: Center(
-//         //   child: Text(
-//         //     'Welcome to CyberCart',
-//         //     style: Theme.of(context).textTheme.headlineMedium,
-//         //   ),
-//         // ),
-//         bottomNavigationBar: const CustomNavigationBar(),
-//       ),
-//     );
-//   }
-// }
-
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _hideTimer;
 
@@ -139,14 +55,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // Detect when the keyboard opens or closes
   @override
   void didChangeMetrics() {
+    // ignore: deprecated_member_use
     final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
     final isKeyboardVisible = bottomInset > 0;
 
     if (!isKeyboardVisible) {
-      // Keyboard just closed → re-enter immersive mode
       _hideSystemNavigation();
     }
   }
@@ -157,7 +72,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _hideSystemNavigation() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top],
+    );
   }
 
   void _showSystemNavigation() {
@@ -175,9 +93,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       behavior: HitTestBehavior.translucent,
       onTap: _onUserInteraction,
       onPanDown: (_) => _onUserInteraction(),
-      child: Scaffold(
-        bottomNavigationBar: const CustomNavigationBar(),
-      ),
+      child: Scaffold(bottomNavigationBar: const CustomNavigationBar()),
     );
   }
 }

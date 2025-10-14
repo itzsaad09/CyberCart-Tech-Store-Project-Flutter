@@ -21,17 +21,22 @@ class _SearchBarState extends State<SearchBar> {
   Widget build(BuildContext context) {
     return TextField(
       controller: widget.controller,
+      style: const TextStyle(color: Colors.black, fontSize: 16),
       decoration: InputDecoration(
         hintText: widget.hintText,
+        hintStyle: TextStyle(color: Colors.grey[700], fontSize: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(25),
           borderSide: BorderSide.none,
         ),
         filled: true,
         fillColor: Colors.grey[200],
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 16,
+        ),
         suffixIcon: IconButton(
-          icon: const Icon(Icons.search),
+          icon: const Icon(Icons.search, color: Colors.grey),
           onPressed: () {
             widget.onChanged(widget.controller.text);
           },
