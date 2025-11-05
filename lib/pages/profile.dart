@@ -1,0 +1,346 @@
+import 'package:cybercart/utils/login_screen.dart';
+import 'package:cybercart/utils/signup_screen.dart';
+import 'package:flutter/material.dart';
+
+enum AuthViewState { profile, login, signup }
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoggedIn = false;
+
+  AuthViewState _currentView = AuthViewState.login;
+
+  void _handleLoginSuccess() {
+    setState(() {
+      _isLoggedIn = true;
+      _currentView = AuthViewState.profile;
+    });
+  }
+
+  void _handleLogout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+
+                setState(() {
+                  _isLoggedIn = false;
+                  _currentView = AuthViewState.login;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('You have been logged out.')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToSignup() {
+    setState(() {
+      _currentView = AuthViewState.signup;
+    });
+  }
+
+  void _navigateToLogin() {
+    setState(() {
+      _currentView = AuthViewState.login;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+
+      child: _buildCurrentScreen(),
+    );
+  }
+
+  Widget _buildCurrentScreen() {
+    if (_isLoggedIn) {
+      return KeyedSubtree(
+        key: const ValueKey('profile_content'),
+        child: _buildProfileContent(context),
+      );
+    }
+
+    switch (_currentView) {
+      case AuthViewState.login:
+        return KeyedSubtree(
+          key: const ValueKey('login_screen'),
+          child: LoginScreen(
+            onLoginSuccess: _handleLoginSuccess,
+            onNavigateToSignup: _navigateToSignup,
+          ),
+        );
+      case AuthViewState.signup:
+        return KeyedSubtree(
+          key: const ValueKey('signup_screen'),
+          child: SignupScreen(
+            onSignupSuccess: _navigateToLogin,
+            onNavigateToLogin: _navigateToLogin,
+          ),
+        );
+      case AuthViewState.profile:
+        return KeyedSubtree(
+          key: const ValueKey('login_screen_fallback'),
+          child: LoginScreen(
+            onLoginSuccess: _handleLoginSuccess,
+            onNavigateToSignup: _navigateToSignup,
+          ),
+        );
+    }
+  }
+
+  Widget _buildProfileContent(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Profile'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _handleLogout,
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.only(top: 20, bottom: 30),
+              width: double.infinity,
+              color: Theme.of(context).primaryColor.withOpacity(0.05),
+              child: const Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 50,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'CyberUser',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'cyberuser@example.com',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Activity',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildQuickActionCard(
+                        context,
+                        icon: Icons.paid_outlined,
+                        title: 'Payments',
+                        onTap: () {},
+                      ),
+                      _buildQuickActionCard(
+                        context,
+                        icon: Icons.local_offer_outlined,
+                        title: 'Coupons',
+                        onTap: () {},
+                      ),
+                      _buildQuickActionCard(
+                        context,
+                        icon: Icons.star_border_rounded,
+                        title: 'Reviews',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  Text(
+                    'Account & Settings',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildProfileTile(
+                          context,
+                          icon: Icons.shopping_bag_outlined,
+                          title: 'My Orders',
+                          subtitle: 'Track, return, or buy again',
+                          onTap: () {},
+                        ),
+                        _buildDivider(),
+                        _buildProfileTile(
+                          context,
+                          icon: Icons.favorite_border,
+                          title: 'Wishlist',
+                          subtitle: 'Your saved items',
+                          onTap: () {},
+                        ),
+                        _buildDivider(),
+                        _buildProfileTile(
+                          context,
+                          icon: Icons.location_on_outlined,
+                          title: 'Addresses',
+                          subtitle: 'Manage shipping locations',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildProfileTile(
+                          context,
+                          icon: Icons.settings_outlined,
+                          title: 'App Settings',
+                          subtitle: 'Theme, notifications, language',
+                          onTap: () {},
+                        ),
+                        _buildDivider(),
+                        _buildProfileTile(
+                          context,
+                          icon: Icons.help_outline,
+                          title: 'Help & Support',
+                          subtitle: 'FAQs and contact us',
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: MediaQuery.of(context).size.width / 4,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 28, color: Theme.of(context).primaryColor),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Theme.of(context).primaryColor, size: 28),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.0),
+      child: Divider(height: 1, thickness: 0.5),
+    );
+  }
+}

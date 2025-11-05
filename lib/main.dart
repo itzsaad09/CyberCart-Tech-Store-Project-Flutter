@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:cybercart/theme/app_theme.dart';
 import 'package:cybercart/utils/nav_bar.dart';
+import 'package:cybercart/utils/onboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,20 +26,26 @@ class CyberCart extends StatelessWidget {
       themeMode: ThemeMode.system,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: const HomeScreen(),
+      home: const MainAppWrapper(),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class MainAppWrapper extends StatefulWidget {
+  const MainAppWrapper({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MainAppWrapper> createState() => _MainAppWrapperState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _MainAppWrapperState extends State<MainAppWrapper>
+    with WidgetsBindingObserver {
   Timer? _hideTimer;
+
+  static const String _onboardedKey = 'has_onboarded';
+
+  bool _showOnboarding = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -45,7 +53,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startHideTimer();
+      _loadOnboardingState();
     });
+  }
+
+  void _loadOnboardingState() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    final bool hasSeenOnboarding = prefs.getBool(_onboardedKey) ?? false;
+
+    if (mounted) {
+      setState(() {
+        _showOnboarding = !hasSeenOnboarding;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -57,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    // ignore: deprecated_member_use
     final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
     final isKeyboardVisible = bottomInset > 0;
 
@@ -87,13 +108,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _startHideTimer();
   }
 
+  void _onOnboardingComplete() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool(_onboardedKey, true);
+
+    if (mounted) {
+      setState(() {
+        _showOnboarding = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_showOnboarding) {
+      return OnboardingScreen(onComplete: _onOnboardingComplete);
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _onUserInteraction,
       onPanDown: (_) => _onUserInteraction(),
-      child: Scaffold(bottomNavigationBar: const CustomNavigationBar()),
+      child: const CustomNavigationBar(),
     );
   }
 }

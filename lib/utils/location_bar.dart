@@ -17,7 +17,7 @@ class LocationBar extends StatelessWidget {
         iconBrightness == Brightness.dark ? Colors.black : Colors.white;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(top: 40.0, left: 10, right: 12),
+        padding: const EdgeInsets.only(top: 0, left: 1.0),
         child: Row(
           children: [
             Icon(Icons.location_on, color: iconColor, size: 30),
@@ -50,7 +50,7 @@ class WishlistButton extends StatelessWidget {
         iconBrightness == Brightness.dark ? Colors.black : Colors.white;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(top: 40.0, right: 8.0),
+        padding: const EdgeInsets.only(top: 0, right: 1.0),
         child: IconButton(
           iconSize: 30,
           icon: Icon(Icons.favorite_border, color: iconColor),

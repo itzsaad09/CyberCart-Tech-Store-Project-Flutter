@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(180),
+        preferredSize: const Size.fromHeight(130),
         child: ClipRRect(
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(25),
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: AppBar(
               automaticallyImplyLeading: false,
               backgroundColor: Colors.transparent,
-              elevation: 0,
+              elevation: 5.0,
               systemOverlayStyle: SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
                 statusBarIconBrightness: iconBrightness,
@@ -64,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
-                    vertical: 10.0,
+                    vertical: 5.0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

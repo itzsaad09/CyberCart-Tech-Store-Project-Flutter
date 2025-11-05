@@ -1,3 +1,6 @@
+import 'package:cybercart/pages/cart.dart';
+import 'package:cybercart/pages/profile.dart';
+import 'package:cybercart/pages/trackorder.dart';
 import 'package:flutter/material.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
@@ -16,9 +19,9 @@ class _CustomNavigationBarState extends State<CustomNavigationBar> {
   // Add your existing pages in this list (no need to define them here)
   final List<Widget> _pages = const [
     HomeScreen(),
-    // TrackOrderPage(),
-    // CartPage(),
-    // ProfilePage(),
+    TrackOrder(),
+    Cart(),
+    ProfileScreen(),
   ];
 
   @override
@@ -42,7 +45,7 @@ class _CustomNavigationBarState extends State<CustomNavigationBar> {
           ),
           CurvedNavigationBarItem(
             child: Icon(Icons.person_outlined),
-            label: 'Profile',
+            label: 'Account',
           ),
         ],
         color: Theme.of(context).primaryColor,
