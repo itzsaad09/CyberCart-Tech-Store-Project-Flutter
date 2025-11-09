@@ -1,6 +1,8 @@
 import 'package:cybercart/utils/login_screen.dart';
 import 'package:cybercart/utils/signup_screen.dart';
+import 'package:cybercart/utils/myorders.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AuthViewState { profile, login, signup }
 
@@ -12,11 +14,35 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isLoggedIn = false;
+  static const String _loggedInKey = 'is_user_logged_in';
 
+  bool _isLoggedIn = false;
+  bool _isLoading = true;
   AuthViewState _currentView = AuthViewState.login;
 
-  void _handleLoginSuccess() {
+  @override
+  void initState() {
+    super.initState();
+    _loadLoginState();
+  }
+
+  void _loadLoginState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
+
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+        _currentView = isLoggedIn ? AuthViewState.profile : AuthViewState.login;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _handleLoginSuccess() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_loggedInKey, true);
+
     setState(() {
       _isLoggedIn = true;
       _currentView = AuthViewState.profile;
@@ -29,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to log out?'),
+          content: const Text('Are you sure you want to log out of CyberCart?'),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -39,8 +65,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext).pop();
+
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool(_loggedInKey, false);
 
                 setState(() {
                   _isLoggedIn = false;
@@ -52,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
+                backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Logout'),
@@ -77,13 +106,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
-
       transitionBuilder: (Widget child, Animation<double> animation) {
         return FadeTransition(opacity: animation, child: child);
       },
-
       child: _buildCurrentScreen(),
     );
   }
@@ -224,7 +255,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.shopping_bag_outlined,
                           title: 'My Orders',
                           subtitle: 'Track, return, or buy again',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const MyOrdersScreen(),
+                              ),
+                            );
+                          },
                         ),
                         _buildDivider(),
                         _buildProfileTile(
@@ -273,7 +310,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
