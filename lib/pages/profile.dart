@@ -1,6 +1,9 @@
 import 'package:cybercart/utils/login_screen.dart';
 import 'package:cybercart/utils/signup_screen.dart';
 import 'package:cybercart/utils/myorders.dart';
+import 'package:cybercart/utils/faqs_screen.dart';
+import 'package:cybercart/utils/app_settings.dart';
+import 'package:cybercart/utils/whishlist.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -269,7 +272,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.favorite_border,
                           title: 'Wishlist',
                           subtitle: 'Your saved items',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const WishlistScreen(),
+                              ),
+                            );
+                          },
                         ),
                         _buildDivider(),
                         _buildProfileTile(
@@ -297,7 +306,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.settings_outlined,
                           title: 'App Settings',
                           subtitle: 'Theme, notifications, language',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const AppSettingsScreen(),
+                              ),
+                            );
+                          },
                         ),
                         _buildDivider(),
                         _buildProfileTile(
@@ -305,7 +320,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.help_outline,
                           title: 'Help & Support',
                           subtitle: 'FAQs and contact us',
-                          onTap: () {},
+
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const FaqsScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

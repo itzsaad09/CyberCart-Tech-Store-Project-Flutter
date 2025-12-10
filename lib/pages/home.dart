@@ -1,8 +1,7 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:cybercart/utils/location_bar.dart';
 import 'package:cybercart/utils/search_bar.dart';
+import 'package:cybercart/utils/slideshow.dart';
 import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -99,7 +98,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      body: const Center(child: Text("Welcome to CyberCart")),
+      body: Column(
+        children: const [
+          const SizedBox(height: 10),
+          Expanded(
+            child: SingleChildScrollView(
+              child: SlideshowWidget(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
