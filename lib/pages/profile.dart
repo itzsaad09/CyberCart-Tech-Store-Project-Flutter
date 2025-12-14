@@ -7,6 +7,10 @@ import 'package:cybercart/utils/whishlist.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// NEW IMPORTS FOR IMAGE PICKER
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 enum AuthViewState { profile, login, signup }
 
 class ProfileScreen extends StatefulWidget {
@@ -23,6 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   AuthViewState _currentView = AuthViewState.login;
 
+  // NEW STATE: To hold the local file of the selected profile picture
+  File? _profileImageFile;
+
   @override
   void initState() {
     super.initState();
@@ -32,12 +39,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _loadLoginState() async {
     final prefs = await SharedPreferences.getInstance();
     final bool isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
+    // You could also load the saved profile picture path here
+    // final String? imagePath = prefs.getString('_profileImageKey');
 
     if (mounted) {
       setState(() {
         _isLoggedIn = isLoggedIn;
         _currentView = isLoggedIn ? AuthViewState.profile : AuthViewState.login;
         _isLoading = false;
+        // if (imagePath != null) _profileImageFile = File(imagePath);
       });
     }
   }
@@ -73,9 +83,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool(_loggedInKey, false);
+                // Optionally clear profile image state as well:
+                // await prefs.remove('_profileImageKey'); 
 
                 setState(() {
                   _isLoggedIn = false;
+                  _profileImageFile = null; // Clear image state on logout
                   _currentView = AuthViewState.login;
                 });
 
@@ -106,6 +119,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _currentView = AuthViewState.login;
     });
   }
+
+  // --- NEW: Image Picker Logic ---
+
+  void _showImageSourcePicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Photo Gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // FINALIZED: Implementation of the image picking logic
+  void _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 50);
+
+    if (pickedFile != null) {
+      final imageFile = File(pickedFile.path);
+
+      setState(() {
+        _profileImageFile = imageFile;
+      });
+
+      // TODO: 1. Upload imageFile to your server/storage.
+      // TODO: 2. Save the resulting image URL/path to SharedPreferences here.
+
+      // Show confirmation
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profile picture updated from ${source.name}!'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No image selected.')),
+      );
+    }
+  }
+
+  void _changeProfilePicture() {
+    _showImageSourcePicker();
+  }
+
+  // --- END NEW LOGIC ---
 
   @override
   Widget build(BuildContext context) {
@@ -178,23 +257,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.only(top: 20, bottom: 30),
               width: double.infinity,
               color: Theme.of(context).primaryColor.withOpacity(0.05),
-              child: const Column(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person_rounded,
-                      size: 50,
-                      color: Colors.blueGrey,
+                  // MODIFIED: Make the CircleAvatar tappable and display the image
+                  GestureDetector(
+                    onTap: _changeProfilePicture, // Calls the source picker
+                    child: CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white,
+                      // Display the selected image if _profileImageFile is set
+                      backgroundImage: _profileImageFile != null
+                          ? FileImage(_profileImageFile!)
+                          : null,
+                      child: _profileImageFile == null
+                          ? const Icon(
+                              // Show icon only if no image is selected
+                              Icons.person_rounded,
+                              size: 50,
+                              color: Colors.blueGrey,
+                            )
+                          : null,
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
+                  const SizedBox(height: 12),
+                  const Text(
                     'CyberUser',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  Text(
+                  const Text(
                     'cyberuser@example.com',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
@@ -210,8 +300,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     'My Activity',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -242,8 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     'Account & Settings',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Card(
@@ -320,7 +410,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.help_outline,
                           title: 'Help & Support',
                           subtitle: 'FAQs and contact us',
-
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(

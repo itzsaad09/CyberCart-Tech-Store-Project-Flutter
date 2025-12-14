@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:cybercart/utils/location_bar.dart';
-import 'package:cybercart/utils/search_bar.dart';
+import 'package:cybercart/utils/search_bar.dart'; // Must contain onSubmitted prop
 import 'package:cybercart/utils/slideshow.dart';
 import 'package:flutter/services.dart';
+import 'package:cybercart/utils/category_tab.dart'; // Assuming this is CategoryChipsComponent
+import 'package:cybercart/utils/viral_products.dart';
+import 'package:cybercart/utils/new_arrivals.dart';
+// NEW: Import SearchScreen (assuming path)
+import 'package:cybercart/utils/search_screen.dart'; 
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +18,52 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // State from the second block
+  String _selectedCategory = ''; 
+  final TextEditingController _searchController = TextEditingController(); 
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  // Method from the first block
+  void _handleCategoryChange(String category) {
+    setState(() {
+      _selectedCategory = category;
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Filtering products by: $category')));
+  }
+
+  // Method from the second block
+  void _navigateToSearchScreen(String initialQuery) {
+    if (initialQuery.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          // Assuming SearchScreen can accept an initialQuery parameter
+          builder: (context) => SearchScreen(initialQuery: initialQuery),
+        ),
+      ).then((_) {
+        _searchController.clear(); 
+      });
+    } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter a search term.')),
+        );
+    }
+  }
+
+  // Placeholder from the second block (Integrated for completeness)
+  Widget WishlistButton({required VoidCallback onTap}) {
+    return IconButton(
+      icon: const Icon(Icons.favorite_border, color: Colors.white),
+      onPressed: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Brightness platformBrightness = MediaQuery.of(
@@ -85,9 +137,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 10),
 
+                      // MODIFIED: SearchBar now uses onSubmitted for navigation
                       SearchBar(
-                        controller: TextEditingController(),
+                        controller: _searchController,
                         hintText: "Search products...",
+                        // This triggers navigation when Enter is pressed or search icon is tapped.
+                        onSubmitted: _navigateToSearchScreen, 
                         onChanged: (value) {},
                       ),
                     ],
@@ -99,11 +154,32 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       body: Column(
-        children: const [
+        children: [
           const SizedBox(height: 10),
           Expanded(
             child: SingleChildScrollView(
-              child: SlideshowWidget(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SlideshowWidget(),
+
+                  // Assuming CategoryTab is the CategoryChipsComponent
+                  CategoryTab(onCategorySelected: _handleCategoryChange), 
+
+                  const ViralProductsComponent(),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 10.0,
+                    ),
+                  ),
+
+                  const NewArrivalsComponent(),
+
+                  const SizedBox(height: 100),
+                ],
+              ),
             ),
           ),
         ],

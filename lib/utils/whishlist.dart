@@ -217,8 +217,9 @@ class _WishlistItemCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
+              // MODIFIED: Changed currency symbol from \$ to Rs.
               Text(
-                '\$${product.price.toStringAsFixed(2)}',
+                'Rs. ${product.price.toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).primaryColor,

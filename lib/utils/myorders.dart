@@ -203,8 +203,9 @@ class _OrderCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // MODIFIED: Changed currency display from 'PKR Rs. ' to 'Rs. '
                   Text(
-                    '\$${order.total.toStringAsFixed(2)}',
+                    'Rs. ${order.total.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).primaryColor,

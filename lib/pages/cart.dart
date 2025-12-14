@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cybercart/utils/checkout_screen.dart';
+
+// Define the threshold for free shipping
+const double freeShippingThreshold = 1999.0;
+const double standardShippingFee = 150.0; // Original flat fee for calculation
 
 class CartItem {
   final String id;
@@ -22,49 +27,21 @@ List<CartItem> initialCartItems = [
   CartItem(
     id: 'P001',
     name: 'CyberMouse Pro X',
-    price: 59.99,
+    price: 599.0,
     quantity: 1,
     imageUrl: 'assets/products/mouse.png',
   ),
   CartItem(
     id: 'P002',
     name: 'Neon LED Keyboard',
-    price: 129.50,
+    price: 1299.0,
     quantity: 2,
     imageUrl: 'assets/products/keyboard.png',
   ),
   CartItem(
     id: 'P003',
     name: 'Gamer Headset 3000',
-    price: 49.00,
-    quantity: 1,
-    imageUrl: 'assets/products/headset.png',
-  ),
-  CartItem(
-    id: 'P003',
-    name: 'Gamer Headset 3000',
-    price: 49.00,
-    quantity: 1,
-    imageUrl: 'assets/products/headset.png',
-  ),
-  CartItem(
-    id: 'P003',
-    name: 'Gamer Headset 3000',
-    price: 49.00,
-    quantity: 1,
-    imageUrl: 'assets/products/headset.png',
-  ),
-  CartItem(
-    id: 'P003',
-    name: 'Gamer Headset 3000',
-    price: 49.00,
-    quantity: 1,
-    imageUrl: 'assets/products/headset.png',
-  ),
-  CartItem(
-    id: 'P003',
-    name: 'Gamer Headset 3000',
-    price: 49.00,
+    price: 4449.0,
     quantity: 1,
     imageUrl: 'assets/products/headset.png',
   ),
@@ -79,7 +56,14 @@ class Cart extends StatefulWidget {
 
 class _CartState extends State<Cart> {
   List<CartItem> _cartItems = initialCartItems;
-  final double _shippingFee = 15.00;
+  
+  // MODIFIED: _shippingFee is now a getter that calculates the fee dynamically
+  double get _shippingFee {
+    if (_subtotal >= freeShippingThreshold) {
+      return 0.00;
+    }
+    return standardShippingFee;
+  }
 
   double get _subtotal => _cartItems.fold(0.0, (sum, item) => sum + item.total);
   double get _total => _subtotal + _shippingFee;
@@ -90,6 +74,7 @@ class _CartState extends State<Cart> {
       return;
     }
     setState(() {
+      // Find the item using indexWhere to safely update its quantity
       final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
         _cartItems[itemIndex].quantity = newQuantity;
@@ -99,7 +84,11 @@ class _CartState extends State<Cart> {
 
   void _removeItem(String itemId) {
     setState(() {
-      _cartItems.removeWhere((item) => item.id == itemId);
+      // Find the index of the first item with the matching ID for removal
+      final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
+      if (itemIndex != -1) {
+          _cartItems.removeAt(itemIndex);
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Item removed from cart.')));
@@ -114,11 +103,9 @@ class _CartState extends State<Cart> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Proceeding to checkout for \$${_total.toStringAsFixed(2)}!',
-        ),
+    Navigator.of(context).push(
+    MaterialPageRoute(
+        builder: (context) => CheckoutScreen(totalAmount: _total),
       ),
     );
   }
@@ -174,7 +161,7 @@ class _CartState extends State<Cart> {
                       return _CartItemCard(
                         item: item,
                         onQuantityChanged: _updateQuantity,
-                        onRemove: _removeItem,
+                        onRemove: (id) => _removeItem(item.id), // Passing the ID
                       );
                     },
                   ),
@@ -186,7 +173,6 @@ class _CartState extends State<Cart> {
                   total: _total,
                   onCheckout: _checkout,
                 ),
-
                 const SizedBox(height: 80),
               ],
             ),
@@ -246,7 +232,7 @@ class _CartItemCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   Text(
-                    '\$${item.price.toStringAsFixed(2)} / unit',
+                    'Rs. ${item.price.toStringAsFixed(2)} / unit',
                     style: const TextStyle(color: Colors.grey, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
@@ -291,7 +277,7 @@ class _CartItemCard extends StatelessWidget {
                       ),
 
                       Text(
-                        '\$${item.total.toStringAsFixed(2)}',
+                        'Rs. ${item.total.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).primaryColor,
@@ -389,6 +375,27 @@ class _CartSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Determine shipping text for display
+    String shippingText;
+    if (shippingFee == 0) {
+      shippingText = 'Free';
+    } else {
+      shippingText = 'Rs. ${shippingFee.toStringAsFixed(2)}';
+    }
+
+    // Determine saving message if eligible for free shipping
+    String? savingMessage;
+    if (shippingFee == 0) {
+      savingMessage = '🎉 You qualify for FREE shipping!';
+    } else {
+      double needed = freeShippingThreshold - subtotal;
+      if (needed > 0) {
+          shippingText = 'Rs. ${shippingFee.toStringAsFixed(2)}';
+          savingMessage = 'Add Rs. ${needed.toStringAsFixed(2)} to get FREE shipping!';
+      }
+    }
+
+
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
@@ -408,23 +415,41 @@ class _CartSummary extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Subtotal
           _buildSummaryRow(
             context,
             'Subtotal',
-            '\$${subtotal.toStringAsFixed(2)}',
+            'Rs. ${subtotal.toStringAsFixed(2)}',
           ),
 
+          // Shipping Fee
           _buildSummaryRow(
             context,
             'Shipping',
-            shippingFee == 0 ? 'Free' : '\$${shippingFee.toStringAsFixed(2)}',
+            shippingText,
           ),
+          
+          // NEW: Saving/Goal Message
+          if (savingMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+              child: Text(
+                savingMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: shippingFee == 0 ? Colors.green.shade700 : Colors.orange.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
           const Divider(height: 20, thickness: 1),
 
+          // Total
           _buildSummaryRow(
             context,
             'Total',
-            '\$${total.toStringAsFixed(2)}',
+            'Rs. ${total.toStringAsFixed(2)}',
             isTotal: true,
           ),
           const SizedBox(height: 20),
