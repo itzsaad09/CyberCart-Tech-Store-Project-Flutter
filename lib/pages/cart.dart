@@ -56,7 +56,7 @@ class Cart extends StatefulWidget {
 
 class _CartState extends State<Cart> {
   List<CartItem> _cartItems = initialCartItems;
-  
+
   // MODIFIED: _shippingFee is now a getter that calculates the fee dynamically
   double get _shippingFee {
     if (_subtotal >= freeShippingThreshold) {
@@ -87,7 +87,7 @@ class _CartState extends State<Cart> {
       // Find the index of the first item with the matching ID for removal
       final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
-          _cartItems.removeAt(itemIndex);
+        _cartItems.removeAt(itemIndex);
       }
       ScaffoldMessenger.of(
         context,
@@ -104,7 +104,7 @@ class _CartState extends State<Cart> {
     }
 
     Navigator.of(context).push(
-    MaterialPageRoute(
+      MaterialPageRoute(
         builder: (context) => CheckoutScreen(totalAmount: _total),
       ),
     );
@@ -161,7 +161,8 @@ class _CartState extends State<Cart> {
                       return _CartItemCard(
                         item: item,
                         onQuantityChanged: _updateQuantity,
-                        onRemove: (id) => _removeItem(item.id), // Passing the ID
+                        onRemove: (id) =>
+                            _removeItem(item.id), // Passing the ID
                       );
                     },
                   ),
@@ -390,11 +391,11 @@ class _CartSummary extends StatelessWidget {
     } else {
       double needed = freeShippingThreshold - subtotal;
       if (needed > 0) {
-          shippingText = 'Rs. ${shippingFee.toStringAsFixed(2)}';
-          savingMessage = 'Add Rs. ${needed.toStringAsFixed(2)} to get FREE shipping!';
+        shippingText = 'Rs. ${shippingFee.toStringAsFixed(2)}';
+        savingMessage =
+            'Add Rs. ${needed.toStringAsFixed(2)} to get FREE shipping!';
       }
     }
-
 
     return Container(
       padding: const EdgeInsets.all(20.0),
@@ -423,12 +424,8 @@ class _CartSummary extends StatelessWidget {
           ),
 
           // Shipping Fee
-          _buildSummaryRow(
-            context,
-            'Shipping',
-            shippingText,
-          ),
-          
+          _buildSummaryRow(context, 'Shipping', shippingText),
+
           // NEW: Saving/Goal Message
           if (savingMessage != null)
             Padding(
@@ -437,7 +434,9 @@ class _CartSummary extends StatelessWidget {
                 savingMessage,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: shippingFee == 0 ? Colors.green.shade700 : Colors.orange.shade700,
+                  color: shippingFee == 0
+                      ? Colors.green.shade700
+                      : Colors.orange.shade700,
                   fontWeight: FontWeight.w600,
                 ),
               ),

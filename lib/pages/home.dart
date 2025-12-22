@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:cybercart/utils/location_bar.dart';
-import 'package:cybercart/utils/search_bar.dart'; // Must contain onSubmitted prop
+import 'package:cybercart/utils/search_bar.dart';
 import 'package:cybercart/utils/slideshow.dart';
 import 'package:flutter/services.dart';
-import 'package:cybercart/utils/category_tab.dart'; // Assuming this is CategoryChipsComponent
+import 'package:cybercart/utils/category_tab.dart';
 import 'package:cybercart/utils/viral_products.dart';
 import 'package:cybercart/utils/new_arrivals.dart';
-// NEW: Import SearchScreen (assuming path)
 import 'package:cybercart/utils/search_screen.dart'; 
 
 

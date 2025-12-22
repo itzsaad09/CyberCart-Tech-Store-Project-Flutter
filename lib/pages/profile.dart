@@ -6,8 +6,6 @@ import 'package:cybercart/utils/app_settings.dart';
 import 'package:cybercart/utils/whishlist.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// NEW IMPORTS FOR IMAGE PICKER
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -84,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool(_loggedInKey, false);
                 // Optionally clear profile image state as well:
-                // await prefs.remove('_profileImageKey'); 
+                // await prefs.remove('_profileImageKey');
 
                 setState(() {
                   _isLoggedIn = false;
@@ -169,14 +167,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Profile picture updated from ${source.name}!'),
-        ),
+        SnackBar(content: Text('Profile picture updated from ${source.name}!')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No image selected.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No image selected.')));
     }
   }
 
@@ -300,8 +296,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     'My Activity',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -332,8 +328,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     'Account & Settings',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Card(
