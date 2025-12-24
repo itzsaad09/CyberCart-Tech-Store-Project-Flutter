@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cybercart/utils/checkout_screen.dart';
 
-// Define the threshold for free shipping
 const double freeShippingThreshold = 1999.0;
-const double standardShippingFee = 150.0; // Original flat fee for calculation
+const double standardShippingFee = 150.0;
 
 class CartItem {
   final String id;
@@ -57,7 +56,6 @@ class Cart extends StatefulWidget {
 class _CartState extends State<Cart> {
   List<CartItem> _cartItems = initialCartItems;
 
-  // MODIFIED: _shippingFee is now a getter that calculates the fee dynamically
   double get _shippingFee {
     if (_subtotal >= freeShippingThreshold) {
       return 0.00;
@@ -74,7 +72,6 @@ class _CartState extends State<Cart> {
       return;
     }
     setState(() {
-      // Find the item using indexWhere to safely update its quantity
       final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
         _cartItems[itemIndex].quantity = newQuantity;
@@ -84,7 +81,6 @@ class _CartState extends State<Cart> {
 
   void _removeItem(String itemId) {
     setState(() {
-      // Find the index of the first item with the matching ID for removal
       final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
       if (itemIndex != -1) {
         _cartItems.removeAt(itemIndex);
@@ -161,8 +157,7 @@ class _CartState extends State<Cart> {
                       return _CartItemCard(
                         item: item,
                         onQuantityChanged: _updateQuantity,
-                        onRemove: (id) =>
-                            _removeItem(item.id), // Passing the ID
+                        onRemove: (id) => _removeItem(item.id),
                       );
                     },
                   ),
@@ -376,7 +371,6 @@ class _CartSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine shipping text for display
     String shippingText;
     if (shippingFee == 0) {
       shippingText = 'Free';
@@ -384,7 +378,6 @@ class _CartSummary extends StatelessWidget {
       shippingText = 'Rs. ${shippingFee.toStringAsFixed(2)}';
     }
 
-    // Determine saving message if eligible for free shipping
     String? savingMessage;
     if (shippingFee == 0) {
       savingMessage = '🎉 You qualify for FREE shipping!';
@@ -416,17 +409,14 @@ class _CartSummary extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Subtotal
           _buildSummaryRow(
             context,
             'Subtotal',
             'Rs. ${subtotal.toStringAsFixed(2)}',
           ),
 
-          // Shipping Fee
           _buildSummaryRow(context, 'Shipping', shippingText),
 
-          // NEW: Saving/Goal Message
           if (savingMessage != null)
             Padding(
               padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
@@ -444,7 +434,6 @@ class _CartSummary extends StatelessWidget {
 
           const Divider(height: 20, thickness: 1),
 
-          // Total
           _buildSummaryRow(
             context,
             'Total',

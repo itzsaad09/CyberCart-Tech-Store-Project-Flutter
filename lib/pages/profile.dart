@@ -25,7 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   AuthViewState _currentView = AuthViewState.login;
 
-  // NEW STATE: To hold the local file of the selected profile picture
   File? _profileImageFile;
 
   @override
@@ -37,15 +36,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _loadLoginState() async {
     final prefs = await SharedPreferences.getInstance();
     final bool isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
-    // You could also load the saved profile picture path here
-    // final String? imagePath = prefs.getString('_profileImageKey');
 
     if (mounted) {
       setState(() {
         _isLoggedIn = isLoggedIn;
         _currentView = isLoggedIn ? AuthViewState.profile : AuthViewState.login;
         _isLoading = false;
-        // if (imagePath != null) _profileImageFile = File(imagePath);
       });
     }
   }
@@ -81,12 +77,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool(_loggedInKey, false);
-                // Optionally clear profile image state as well:
-                // await prefs.remove('_profileImageKey');
 
                 setState(() {
                   _isLoggedIn = false;
-                  _profileImageFile = null; // Clear image state on logout
+                  _profileImageFile = null;
                   _currentView = AuthViewState.login;
                 });
 
@@ -118,8 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // --- NEW: Image Picker Logic ---
-
   void _showImageSourcePicker() {
     showModalBottomSheet(
       context: context,
@@ -150,7 +142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // FINALIZED: Implementation of the image picking logic
   void _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source, imageQuality: 50);
@@ -162,10 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _profileImageFile = imageFile;
       });
 
-      // TODO: 1. Upload imageFile to your server/storage.
-      // TODO: 2. Save the resulting image URL/path to SharedPreferences here.
-
-      // Show confirmation
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile picture updated from ${source.name}!')),
       );
@@ -179,8 +166,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _changeProfilePicture() {
     _showImageSourcePicker();
   }
-
-  // --- END NEW LOGIC ---
 
   @override
   Widget build(BuildContext context) {
@@ -255,19 +240,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Theme.of(context).primaryColor.withOpacity(0.05),
               child: Column(
                 children: [
-                  // MODIFIED: Make the CircleAvatar tappable and display the image
                   GestureDetector(
-                    onTap: _changeProfilePicture, // Calls the source picker
+                    onTap: _changeProfilePicture,
                     child: CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      // Display the selected image if _profileImageFile is set
+
                       backgroundImage: _profileImageFile != null
                           ? FileImage(_profileImageFile!)
                           : null,
                       child: _profileImageFile == null
                           ? const Icon(
-                              // Show icon only if no image is selected
                               Icons.person_rounded,
                               size: 50,
                               color: Colors.blueGrey,

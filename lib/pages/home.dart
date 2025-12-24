@@ -6,8 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:cybercart/utils/category_tab.dart';
 import 'package:cybercart/utils/viral_products.dart';
 import 'package:cybercart/utils/new_arrivals.dart';
-import 'package:cybercart/utils/search_screen.dart'; 
-
+import 'package:cybercart/utils/search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,17 +16,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // State from the second block
-  String _selectedCategory = ''; 
-  final TextEditingController _searchController = TextEditingController(); 
+  String _selectedCategory = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
-  
-  // Method from the first block
+
   void _handleCategoryChange(String category) {
     setState(() {
       _selectedCategory = category;
@@ -37,25 +34,24 @@ class _HomeScreenState extends State<HomeScreen> {
     ).showSnackBar(SnackBar(content: Text('Filtering products by: $category')));
   }
 
-  // Method from the second block
   void _navigateToSearchScreen(String initialQuery) {
     if (initialQuery.isNotEmpty) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          // Assuming SearchScreen can accept an initialQuery parameter
-          builder: (context) => SearchScreen(initialQuery: initialQuery),
-        ),
-      ).then((_) {
-        _searchController.clear(); 
-      });
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => SearchScreen(initialQuery: initialQuery),
+            ),
+          )
+          .then((_) {
+            _searchController.clear();
+          });
     } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter a search term.')),
-        );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a search term.')),
+      );
     }
   }
 
-  // Placeholder from the second block (Integrated for completeness)
   Widget WishlistButton({required VoidCallback onTap}) {
     return IconButton(
       icon: const Icon(Icons.favorite_border, color: Colors.white),
@@ -136,12 +132,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // MODIFIED: SearchBar now uses onSubmitted for navigation
                       SearchBar(
                         controller: _searchController,
                         hintText: "Search products...",
-                        // This triggers navigation when Enter is pressed or search icon is tapped.
-                        onSubmitted: _navigateToSearchScreen, 
+
+                        onSubmitted: _navigateToSearchScreen,
                         onChanged: (value) {},
                       ),
                     ],
@@ -162,8 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const SlideshowWidget(),
 
-                  // Assuming CategoryTab is the CategoryChipsComponent
-                  CategoryTab(onCategorySelected: _handleCategoryChange), 
+                  CategoryTab(onCategorySelected: _handleCategoryChange),
 
                   const ViralProductsComponent(),
 

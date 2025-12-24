@@ -4,15 +4,15 @@ class SearchBar extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final ValueChanged<String> onChanged;
-  // REMOVED: final VoidCallback? onTap; 
-  final ValueChanged<String>? onSubmitted; 
+
+  final ValueChanged<String>? onSubmitted;
 
   const SearchBar({
     super.key,
     required this.controller,
     required this.hintText,
     required this.onChanged,
-    // REMOVED: this.onTap, 
+
     this.onSubmitted,
   });
 
@@ -26,10 +26,9 @@ class _SearchBarState extends State<SearchBar> {
     return TextField(
       controller: widget.controller,
       style: const TextStyle(color: Colors.black, fontSize: 16),
-      // MODIFIED: onTap handler removed entirely.
-      // onTap: widget.onTap, // <-- This line is removed
-      onSubmitted: widget.onSubmitted, // Keeps Enter key submission
-      
+
+      onSubmitted: widget.onSubmitted,
+
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: TextStyle(color: Colors.grey[700], fontSize: 16),
@@ -46,8 +45,7 @@ class _SearchBarState extends State<SearchBar> {
         suffixIcon: IconButton(
           icon: const Icon(Icons.search, color: Colors.grey),
           onPressed: () {
-            // This is triggered when the user taps the search icon.
-            widget.onSubmitted?.call(widget.controller.text); 
+            widget.onSubmitted?.call(widget.controller.text);
           },
         ),
       ),
