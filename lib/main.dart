@@ -1,10 +1,17 @@
 import 'dart:async';
-import 'package:cybercart/theme/app_theme.dart';
-import 'package:cybercart/utils/nav_bar.dart';
-import 'package:cybercart/utils/onboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
+import 'package:cybercart/theme/app_theme.dart';
+import 'package:cybercart/providers/auth_provider.dart';
+import 'package:cybercart/utils/nav_bar.dart';
+import 'package:cybercart/utils/onboard_screen.dart';
+import 'package:cybercart/utils/login_screen.dart';
+import 'package:cybercart/utils/signup_screen.dart';
+import 'package:cybercart/utils/forgot_password_screen.dart';
 
 class ThemeController extends InheritedWidget {
   final ThemeMode themeMode;
@@ -30,13 +37,27 @@ class ThemeController extends InheritedWidget {
   }
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+
+  // Initialize Google Sign In v7+
+  await GoogleSignIn.instance.initialize(
+    serverClientId: dotenv.env['ANDROID_GOOGLE_CLIENT_ID']!,
+  );
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]).then((_) {
-    runApp(const CyberCart());
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ],
+        child: const CyberCart(),
+      ),
+    );
   });
 }
 
@@ -76,17 +97,10 @@ class _CyberCartState extends State<CyberCart> {
 
   void setThemeMode(ThemeMode mode) async {
     if (_themeMode == mode) return;
-
     final prefs = await SharedPreferences.getInstance();
-
-    String modeString = mode.name;
-
-    await prefs.setString(_themeKey, modeString);
-
+    await prefs.setString(_themeKey, mode.name);
     if (mounted) {
-      setState(() {
-        _themeMode = mode;
-      });
+      setState(() => _themeMode = mode);
     }
   }
 
@@ -96,11 +110,27 @@ class _CyberCartState extends State<CyberCart> {
       themeMode: _themeMode,
       setThemeMode: setThemeMode,
       child: MaterialApp(
+        title: 'CyberCart',
         debugShowCheckedModeBanner: false,
         themeMode: _themeMode,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
+        
+        // Use MainAppWrapper as the entry point
         home: const MainAppWrapper(),
+
+        // Named routes table for easy navigation across the app
+        routes: {
+          '/signin': (context) => LoginScreen(
+                onLoginSuccess: () => Navigator.pushReplacementNamed(context, '/'),
+                onNavigateToSignup: () => Navigator.pushNamed(context, '/signup'),
+              ),
+          '/signup': (context) => SignupScreen(
+                onSignupSuccess: () => Navigator.pushNamed(context, '/verify'),
+                onNavigateToLogin: () => Navigator.pushReplacementNamed(context, '/signin'),
+              ),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+        },
       ),
     );
   }
@@ -113,12 +143,9 @@ class MainAppWrapper extends StatefulWidget {
   State<MainAppWrapper> createState() => _MainAppWrapperState();
 }
 
-class _MainAppWrapperState extends State<MainAppWrapper>
-    with WidgetsBindingObserver {
+class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
   Timer? _hideTimer;
-
   static const String _onboardedKey = 'has_onboarded';
-
   bool _showOnboarding = false;
   bool _isLoading = true;
 
@@ -126,57 +153,35 @@ class _MainAppWrapperState extends State<MainAppWrapper>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startHideTimer();
-      _loadOnboardingState();
-    });
+    _initAppData();
   }
 
-  void _loadOnboardingState() async {
+  Future<void> _initAppData() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-
     final bool hasSeenOnboarding = prefs.getBool(_onboardedKey) ?? false;
 
+    // Trigger global auth check from provider
     if (mounted) {
+      await Provider.of<AuthProvider>(context, listen: false).checkAuthStatus();
       setState(() {
         _showOnboarding = !hasSeenOnboarding;
         _isLoading = false;
       });
+      _startHideTimer();
     }
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _hideTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didChangeMetrics() {
-    final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
-    final isKeyboardVisible = bottomInset > 0;
-
-    if (!isKeyboardVisible) {
-      _hideSystemNavigation();
-    }
-  }
-
+  // --- System UI Logic ---
   void _startHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 2), _hideSystemNavigation);
   }
 
   void _hideSystemNavigation() {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: [SystemUiOverlay.top],
-    );
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
   }
 
-  void _showSystemNavigation() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  }
+  void _showSystemNavigation() => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   void _onUserInteraction() {
     _showSystemNavigation();
@@ -185,31 +190,38 @@ class _MainAppWrapperState extends State<MainAppWrapper>
 
   void _onOnboardingComplete() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-
     await prefs.setBool(_onboardedKey, true);
-
-    if (mounted) {
-      setState(() {
-        _showOnboarding = false;
-      });
-    }
+    if (mounted) setState(() => _showOnboarding = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    final auth = Provider.of<AuthProvider>(context);
+
+    // 1. Loading State
+    if (_isLoading || auth.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // 2. Onboarding State
     if (_showOnboarding) {
       return OnboardingScreen(onComplete: _onOnboardingComplete);
     }
 
+    // 3. Final Main UI (CustomNavigationBar)
+    // The NavBar handles internal navigation between Home, Search, Cart, and Profile.
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _onUserInteraction,
       onPanDown: (_) => _onUserInteraction(),
       child: const CustomNavigationBar(),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _hideTimer?.cancel();
+    super.dispose();
   }
 }

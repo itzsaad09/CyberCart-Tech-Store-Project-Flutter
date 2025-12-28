@@ -5,9 +5,10 @@ import 'package:cybercart/utils/faqs_screen.dart';
 import 'package:cybercart/utils/app_settings.dart';
 import 'package:cybercart/utils/whishlist.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart'; // Added for state management
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../providers/auth_provider.dart'; // Import your AuthProvider
 
 enum AuthViewState { profile, login, signup }
 
@@ -19,39 +20,19 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const String _loggedInKey = 'is_user_logged_in';
-
-  bool _isLoggedIn = false;
-  bool _isLoading = true;
+  // Removed local _loggedInKey as we use AuthProvider now
   AuthViewState _currentView = AuthViewState.login;
-
   File? _profileImageFile;
 
   @override
   void initState() {
     super.initState();
-    _loadLoginState();
+    // Initial view state is handled by the build method's listener to AuthProvider
   }
 
-  void _loadLoginState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool isLoggedIn = prefs.getBool(_loggedInKey) ?? false;
-
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = isLoggedIn;
-        _currentView = isLoggedIn ? AuthViewState.profile : AuthViewState.login;
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _handleLoginSuccess() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_loggedInKey, true);
-
+  // Updated to use AuthProvider logic
+  void _handleLoginSuccess() {
     setState(() {
-      _isLoggedIn = true;
       _currentView = AuthViewState.profile;
     });
   }
@@ -70,23 +51,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: const Text('Cancel'),
             ),
-
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
 
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool(_loggedInKey, false);
+                // Call the global logout logic from AuthProvider
+                // This clears SharedPreferences and Google Sign-In via AuthService
+                await Provider.of<AuthProvider>(
+                  context,
+                  listen: false,
+                ).logout(context);
 
                 setState(() {
-                  _isLoggedIn = false;
                   _profileImageFile = null;
                   _currentView = AuthViewState.login;
                 });
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('You have been logged out.')),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('You have been logged out.')),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -169,7 +154,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    // Listen to the AuthProvider to automatically react to login/logout
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    if (authProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -178,15 +166,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       transitionBuilder: (Widget child, Animation<double> animation) {
         return FadeTransition(opacity: animation, child: child);
       },
-      child: _buildCurrentScreen(),
+      child: _buildCurrentScreen(authProvider),
     );
   }
 
-  Widget _buildCurrentScreen() {
-    if (_isLoggedIn) {
+  Widget _buildCurrentScreen(AuthProvider authProvider) {
+    // Check global authentication state
+    if (authProvider.isAuthenticated) {
       return KeyedSubtree(
         key: const ValueKey('profile_content'),
-        child: _buildProfileContent(context),
+        child: _buildProfileContent(context, authProvider),
       );
     }
 
@@ -195,6 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return KeyedSubtree(
           key: const ValueKey('login_screen'),
           child: LoginScreen(
+            // PROVIDE THE MISSING PARAMETERS HERE
             onLoginSuccess: _handleLoginSuccess,
             onNavigateToSignup: _navigateToSignup,
           ),
@@ -211,6 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return KeyedSubtree(
           key: const ValueKey('login_screen_fallback'),
           child: LoginScreen(
+            // PROVIDE THE MISSING PARAMETERS HERE
             onLoginSuccess: _handleLoginSuccess,
             onNavigateToSignup: _navigateToSignup,
           ),
@@ -218,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildProfileContent(BuildContext context) {
+  Widget _buildProfileContent(BuildContext context, AuthProvider authProvider) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
@@ -259,13 +250,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'CyberUser',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  Text(
+                    authProvider.name != null && authProvider.name!.isNotEmpty
+                        ? authProvider.name!
+                        : 'Cyber User',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const Text(
-                    'cyberuser@example.com',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  Text(
+                    authProvider.email ??
+                        'cyberuser@example.com', // Dynamic email from provider
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
@@ -410,6 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // Helper methods remain unchanged for UI consistency
   Widget _buildQuickActionCard(
     BuildContext context, {
     required IconData icon,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   final VoidCallback onSignupSuccess;
@@ -20,6 +23,15 @@ class _SignupScreenState extends State<SignupScreen>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
+  // Controllers for the text fields
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
+
   @override
   void initState() {
     super.initState();
@@ -37,7 +49,80 @@ class _SignupScreenState extends State<SignupScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Handles the Signup logic with Confirm Password validation
+  Future<void> _handleSignup() async {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    // Field validation matching Signup.jsx requirements
+    if (fullName.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showSnackBar("Please fill in all fields.");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackBar("Passwords do not match.");
+      return;
+    }
+
+    // Split full name for backend userModel (fname and lname)
+    List<String> nameParts = fullName.split(' ');
+    String fname = nameParts[0];
+    String lname = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : "";
+
+    setState(() => _isLoading = true);
+
+    try {
+      final responseData = await AuthService.register({
+        "fname": fname,
+        "lname": lname,
+        "email": email,
+        "password": password,
+        "confirmPassword": confirmPassword,
+      });
+
+      _showSnackBar(responseData['message'] ?? "Registration successful! Verify OTP.");
+      widget.onSignupSuccess(); 
+    } catch (e) {
+      _showSnackBar(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Handles Google Sign-Up logic
+  Future<void> _handleGoogleSignup() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await AuthService.googleSignIn();
+      if (mounted) {
+        await Provider.of<AuthProvider>(context, listen: false).loginSuccess(
+          data['token'],
+          data['user']['email'],
+          data['user']['fname'],
+          data['user']['lname'],
+        );
+        _showSnackBar("Google account linked successfully!");
+        widget.onSignupSuccess();
+      }
+    } catch (e) {
+      _showSnackBar("Google Sign-up failed.");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -58,7 +143,6 @@ class _SignupScreenState extends State<SignupScreen>
                   'assets/logo/logo_only.png',
                   height: 60,
                   width: 60,
-
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(
                       Icons.person_add_alt_1_rounded,
@@ -75,16 +159,16 @@ class _SignupScreenState extends State<SignupScreen>
                   Text(
                     'Cyber',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).primaryColor,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
                   ),
                   Text(
                     'Cart',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: cartTextColor,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: cartTextColor,
+                        ),
                   ),
                 ],
               ),
@@ -98,11 +182,7 @@ class _SignupScreenState extends State<SignupScreen>
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Google Sign-up clicked!')),
-                    );
-                  },
+                  onPressed: _isLoading ? null : _handleGoogleSignup,
                   icon: const FaIcon(
                     FontAwesomeIcons.google,
                     size: 20,
@@ -113,7 +193,6 @@ class _SignupScreenState extends State<SignupScreen>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-
                       color: Color(0xFF4285F4),
                     ),
                   ),
@@ -146,8 +225,9 @@ class _SignupScreenState extends State<SignupScreen>
               ),
               const SizedBox(height: 20),
 
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _fullNameController,
+                decoration: const InputDecoration(
                   labelText: 'Full Name',
                   prefixIcon: Icon(Icons.person_outline),
                   border: OutlineInputBorder(
@@ -160,8 +240,9 @@ class _SignupScreenState extends State<SignupScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              const TextField(
-                decoration: InputDecoration(
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
                   labelText: 'Email',
                   prefixIcon: Icon(Icons.email_outlined),
                   border: OutlineInputBorder(
@@ -175,26 +256,61 @@ class _SignupScreenState extends State<SignupScreen>
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-              const TextField(
+              
+              // Password Field
+              TextField(
+                controller: _passwordController,
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible),
+                  ),
+                  border: const OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(12)),
                   ),
-                  contentPadding: EdgeInsets.symmetric(
+                  contentPadding: const EdgeInsets.symmetric(
                     vertical: 16,
                     horizontal: 10,
                   ),
                 ),
-                obscureText: true,
+              ),
+              const SizedBox(height: 16),
+
+              // Confirm Password Field
+              TextField(
+                controller: _confirmPasswordController,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  prefixIcon: const Icon(Icons.lock_reset_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(_isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible),
+                  ),
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 10,
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: widget.onSignupSuccess,
+                  onPressed: _isLoading ? null : _handleSignup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
@@ -203,10 +319,17 @@ class _SignupScreenState extends State<SignupScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
 

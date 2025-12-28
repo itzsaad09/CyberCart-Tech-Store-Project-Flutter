@@ -1,13 +1,8 @@
 on:
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   push:
-    branches:
-      - main
-      - master
-      - develop
+    branches: [main, master, develop]
 
 name: "Build & Release"
 
@@ -15,6 +10,8 @@ jobs:
   build:
     name: Build & Release
     runs-on: macos-latest
+    permissions:
+      contents: write 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,25 +28,60 @@ jobs:
           channel: 'stable'
           architecture: x64
 
-      - name: Build and Rename Android APK
+      # --- ANDROID SIGNING SETUP ---
+      - name: Decode Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          echo "storeFile=upload-keystore.jks" > android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+
+      # --- ENVIRONMENT SETUP ---
+      - name: Create .env file
+        run: |
+          echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" > .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.ANDROID_GOOGLE_CLIENT_ID }}" >> .env
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      # --- iOS CONFIGURATION ---
+      - name: Configure iOS Google Sign-In
+        run: |
+          PLIST_PATH="ios/Runner/Info.plist"
+          # Replaces placeholders in your Info.plist with GitHub Secrets
+          sed -i '' "s/REPLACE_ME_CLIENT_ID/${{ secrets.IOS_GOOGLE_CLIENT_ID }}/g" "$PLIST_PATH"
+          sed -i '' "s/REPLACE_ME_REVERSED_ID/${{ secrets.IOS_REVERSIBLE_GOOGLE_CLIENT_ID }}/g" "$PLIST_PATH"
+
+      # --- BUILD COMMANDS ---
+      - name: Build Android APK
         run: |
           flutter build apk --release --split-per-abi
-          cd build/app/outputs/apk/release
+          cd build/app/outputs/flutter-apk/
           mv app-arm64-v8a-release.apk CyberCart-v1.0.${{ github.run_number }}.apk
 
       - name: Build and Rename iOS IPA
         run: |
-          flutter build ios --no-codesign
+          flutter build ios --release --no-codesign
           cd build/ios/iphoneos
           mkdir Payload
-          mv Runner.app Payload/
-          zip -r app.ipa Payload
-          mv app.ipa CyberCart-v1.0.${{ github.run_number }}.ipa
+          cp -r Runner.app Payload/
+          zip -r CyberCart-v1.0.${{ github.run_number }}.ipa Payload
 
+      # --- RELEASE ---
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          # 👇 Update the artifact paths to match the new names 👇
-          artifacts: "build/app/outputs/apk/release/CyberCart-*.apk,build/ios/iphoneos/CyberCart-*.ipa"
+          artifacts: "build/app/outputs/flutter-apk/CyberCart-*.apk,build/ios/iphoneos/CyberCart-*.ipa"
           tag: v1.0.${{ github.run_number }}
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- CLEANUP ---
+      - name: Clean up sensitive files
+        run: |
+          rm -f android/app/upload-keystore.jks
+          rm -f android/key.properties
+          rm -f .env
