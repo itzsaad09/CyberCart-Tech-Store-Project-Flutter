@@ -82,6 +82,6 @@ jobs:
       # --- CLEANUP ---
       - name: Clean up sensitive files
         run: |
-          rm -f android/app/upload-keystore.jks
+          rm -f android/app/cybercart-keystore.jks
           rm -f android/key.properties
           rm -f .env

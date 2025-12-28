@@ -41,7 +41,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  // Initialize Google Sign In v7+
   await GoogleSignIn.instance.initialize(
     serverClientId: dotenv.env['ANDROID_GOOGLE_CLIENT_ID']!,
   );
@@ -52,9 +51,7 @@ Future<void> main() async {
   ]).then((_) {
     runApp(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ],
+        providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
         child: const CyberCart(),
       ),
     );
@@ -115,20 +112,19 @@ class _CyberCartState extends State<CyberCart> {
         themeMode: _themeMode,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        
-        // Use MainAppWrapper as the entry point
+
         home: const MainAppWrapper(),
 
-        // Named routes table for easy navigation across the app
         routes: {
           '/signin': (context) => LoginScreen(
-                onLoginSuccess: () => Navigator.pushReplacementNamed(context, '/'),
-                onNavigateToSignup: () => Navigator.pushNamed(context, '/signup'),
-              ),
+            onLoginSuccess: () => Navigator.pushReplacementNamed(context, '/'),
+            onNavigateToSignup: () => Navigator.pushNamed(context, '/signup'),
+          ),
           '/signup': (context) => SignupScreen(
-                onSignupSuccess: () => Navigator.pushNamed(context, '/verify'),
-                onNavigateToLogin: () => Navigator.pushReplacementNamed(context, '/signin'),
-              ),
+            onSignupSuccess: () => Navigator.pushNamed(context, '/verify'),
+            onNavigateToLogin: () =>
+                Navigator.pushReplacementNamed(context, '/signin'),
+          ),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
         },
       ),
@@ -143,7 +139,8 @@ class MainAppWrapper extends StatefulWidget {
   State<MainAppWrapper> createState() => _MainAppWrapperState();
 }
 
-class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
+class _MainAppWrapperState extends State<MainAppWrapper>
+    with WidgetsBindingObserver {
   Timer? _hideTimer;
   static const String _onboardedKey = 'has_onboarded';
   bool _showOnboarding = false;
@@ -160,7 +157,6 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool hasSeenOnboarding = prefs.getBool(_onboardedKey) ?? false;
 
-    // Trigger global auth check from provider
     if (mounted) {
       await Provider.of<AuthProvider>(context, listen: false).checkAuthStatus();
       setState(() {
@@ -171,17 +167,20 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     }
   }
 
-  // --- System UI Logic ---
   void _startHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 2), _hideSystemNavigation);
   }
 
   void _hideSystemNavigation() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.top]);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top],
+    );
   }
 
-  void _showSystemNavigation() => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  void _showSystemNavigation() =>
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   void _onUserInteraction() {
     _showSystemNavigation();
@@ -198,18 +197,14 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
 
-    // 1. Loading State
     if (_isLoading || auth.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // 2. Onboarding State
     if (_showOnboarding) {
       return OnboardingScreen(onComplete: _onOnboardingComplete);
     }
 
-    // 3. Final Main UI (CustomNavigationBar)
-    // The NavBar handles internal navigation between Home, Search, Cart, and Profile.
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _onUserInteraction,
