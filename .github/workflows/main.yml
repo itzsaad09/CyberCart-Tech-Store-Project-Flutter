@@ -30,7 +30,7 @@ jobs:
 
       # --- ANDROID SIGNING SETUP ---
       - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/cybercart-keystore.jks
 
       - name: Create key.properties
         run: |
