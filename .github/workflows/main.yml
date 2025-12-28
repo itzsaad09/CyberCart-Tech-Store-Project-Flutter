@@ -30,11 +30,11 @@ jobs:
 
       # --- ANDROID SIGNING SETUP ---
       - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/cybercart-keystore.jks
 
       - name: Create key.properties
         run: |
-          echo "storeFile=upload-keystore.jks" > android/key.properties
+          echo "storeFile=cybercart-keystore.jks" > android/key.properties
           echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
@@ -82,6 +82,6 @@ jobs:
       # --- CLEANUP ---
       - name: Clean up sensitive files
         run: |
-          rm -f android/app/upload-keystore.jks
+          rm -f android/app/cybercart-keystore.jks
           rm -f android/key.properties
           rm -f .env
