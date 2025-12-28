@@ -17,17 +17,21 @@ class AuthProvider with ChangeNotifier {
     checkAuthStatus();
   }
 
-  Future<void> loginSuccess(String token, String email, String fname, String lname) async {
+  Future<void> loginSuccess(
+    String token,
+    String email,
+    String fname,
+    String lname,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await AuthService.saveUser(token, email);
-    
-    // Save names to local storage for persistence
+
     await prefs.setString('fname', fname);
     await prefs.setString('lname', lname);
 
     _isAuthenticated = true;
     _email = email;
-    _name = '$fname $lname'; // Combine names
+    _name = '$fname $lname';
     notifyListeners();
   }
 
@@ -37,12 +41,11 @@ class AuthProvider with ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     final data = await AuthService.getStoredUser();
-    
+
     if (data['token'] != null && data['email'] != null) {
       _isAuthenticated = true;
       _email = data['email'];
-      
-      // Retrieve stored names
+
       String fname = prefs.getString('fname') ?? "";
       String lname = prefs.getString('lname') ?? "";
       _name = '$fname $lname'.trim();

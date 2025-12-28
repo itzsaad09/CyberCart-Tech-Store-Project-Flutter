@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,16 +14,54 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
-  int _currentStep = 0; // 0: Email, 1: OTP, 2: New Password
+  int _currentStep = 0;
   bool _isLoading = false;
 
-  void _showSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(
+  Timer? _timer;
+  int _secondsRemaining = 60;
+  bool _canResend = false;
+
+  @override
+  void dispose() {
+    _stopTimer();
+    _emailController.dispose();
+    _otpController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _stopTimer();
+    setState(() {
+      _secondsRemaining = 60;
+      _canResend = false;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining == 0) {
+        setState(() {
+          _canResend = true;
+          _stopTimer();
+        });
+      } else {
+        setState(() {
+          _secondsRemaining--;
+        });
+      }
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+  }
+
+  void _showSnackBar(String message) =>
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
-
-  // --- Backend Logic (Kept Original) ---
 
   Future<void> _sendCode() async {
     if (_emailController.text.isEmpty) return _showSnackBar("Enter your email");
@@ -33,6 +72,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await AuthService.resendOtp();
       _showSnackBar("Verification code sent to email.");
       setState(() => _currentStep = 1);
+      _startTimer();
+    } catch (e) {
+      _showSnackBar(e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resendCode() async {
+    if (!_canResend) return;
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.resendOtp();
+      _showSnackBar("A new code has been sent.");
+      _startTimer();
     } catch (e) {
       _showSnackBar(e.toString());
     } finally {
@@ -45,6 +99,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
     try {
       await AuthService.verifyOtp(_otpController.text);
+      _stopTimer();
       setState(() => _currentStep = 2);
     } catch (e) {
       _showSnackBar("Invalid Code");
@@ -54,7 +109,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _resetPassword() async {
-    if (_newPasswordController.text.isEmpty) return _showSnackBar("Enter new password");
+    if (_newPasswordController.text.isEmpty)
+      return _showSnackBar("Enter new password");
     if (_newPasswordController.text != _confirmPasswordController.text) {
       return _showSnackBar("Passwords do not match");
     }
@@ -105,7 +161,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     VoidCallback onNext = () {};
     String buttonText = "";
 
-    // Determine content based on step
     if (_currentStep == 0) {
       title = "Forgot Password?";
       subtitle = "Enter your registered email to receive a verification code.";
@@ -122,7 +177,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       buttonText = "SEND CODE";
     } else if (_currentStep == 1) {
       title = "Verify OTP";
-      subtitle = "Please enter the 6-digit code sent to ${_emailController.text}.";
+      subtitle =
+          "Please enter the 6-digit code sent to ${_emailController.text}.";
       fields = [
         _buildUIField(
           controller: _otpController,
@@ -130,6 +186,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           hint: "123456",
           icon: Icons.lock_clock_outlined,
           type: TextInputType.number,
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _canResend ? "Didn't receive a code? " : "Resend code in ",
+              style: const TextStyle(color: Colors.grey),
+            ),
+            _canResend
+                ? GestureDetector(
+                    onTap: _resendCode,
+                    child: Text(
+                      "Resend",
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                : Text(
+                    "00:${_secondsRemaining.toString().padLeft(2, '0')}",
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ],
         ),
       ];
       onNext = _verifyCode;
@@ -161,7 +246,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header Icon
         Center(
           child: Container(
             padding: const EdgeInsets.all(20),
@@ -170,7 +254,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              _currentStep == 2 ? Icons.verified_user_outlined : Icons.lock_reset,
+              _currentStep == 2
+                  ? Icons.verified_user_outlined
+                  : Icons.lock_reset,
               size: 60,
               color: Theme.of(context).primaryColor,
             ),
@@ -179,9 +265,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 32),
         Text(
           title,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
@@ -197,15 +283,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             onPressed: onNext,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text(buttonText, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text(
+              buttonText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         if (_currentStep > 0)
           Center(
             child: TextButton(
-              onPressed: () => setState(() => _currentStep--),
+              onPressed: () {
+                _stopTimer();
+                setState(() => _currentStep--);
+              },
               child: const Text("Go Back"),
             ),
           ),
@@ -213,7 +307,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  // Consistent Text Field Builder (Matches Checkout/Profile)
   Widget _buildUIField({
     required TextEditingController controller,
     required String label,
@@ -237,7 +330,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }

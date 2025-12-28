@@ -19,14 +19,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Input controllers to capture UI text
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-  // State for password visibility toggle
+
   bool _isPasswordVisible = false;
 
-  /// Handles standard Email/Password Login
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -39,17 +37,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Call backend via AuthService
       final data = await AuthService.login(email, password);
-      
-      // 2. Update global AuthProvider state
+
       if (mounted) {
-        // Access fname and lname from the 'user' object in the response
         await Provider.of<AuthProvider>(context, listen: false).loginSuccess(
-          data['token'], 
+          data['token'],
           data['user']['email'],
-          data['user']['fname'], // From backend
-          data['user']['lname'], // From backend
+          data['user']['fname'],
+          data['user']['lname'],
         );
         _showSnackBar("Login successful!");
         widget.onLoginSuccess();
@@ -61,15 +56,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Handles Google Sign-In logic
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
       final data = await AuthService.googleSignIn();
       if (mounted) {
-        await Provider.of<AuthProvider>(context, listen: false)
-            .loginSuccess(data['token'], data['user']['email'],data['user']['fname'], data['user']['lname']);
-            
+        await Provider.of<AuthProvider>(context, listen: false).loginSuccess(
+          data['token'],
+          data['user']['email'],
+          data['user']['fname'],
+          data['user']['lname'],
+        );
+
         _showSnackBar("Google Sign-in successful!");
         widget.onLoginSuccess();
       }
@@ -81,9 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -105,7 +103,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              // --- UI REMAINS UNCHANGED ---
               Image.asset(
                 'assets/logo/logo_only.png',
                 height: 80,
@@ -124,16 +121,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Cyber',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).primaryColor,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
                   ),
                   Text(
                     'Cart',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: cartTextColor,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: cartTextColor,
+                    ),
                   ),
                 ],
               ),
@@ -144,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // --- Google Button with Logic ---
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -190,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- Email Field with Controller ---
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -208,17 +203,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // --- Password Field with Controller and Toggle Eye ---
               TextField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   prefixIcon: const Icon(Icons.lock_outline),
-                  // Eye icon toggle added here
+
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -241,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    // Navigate to your ForgotPasswordScreen
                     Navigator.pushNamed(context, '/forgot-password');
                   },
                   child: Text(
@@ -255,7 +250,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 2),
 
-              // --- Login Button with Logic & Loading state ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -273,11 +267,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
                       : const Text(
                           'Login',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
