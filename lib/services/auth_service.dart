@@ -6,7 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   static final String baseUrl = dotenv.env['BACKEND_URL']!;
-  static final String googleClientId = dotenv.env['ANDROID_GOOGLE_CLIENT_ID']!;
+  static final String googleClientId = dotenv.env['WEB_GOOGLE_CLIENT_ID']!;
 
   // Singleton instance - no currentUser property anymore in v7+
   static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
