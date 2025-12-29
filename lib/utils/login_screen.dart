@@ -42,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         await Provider.of<AuthProvider>(context, listen: false).loginSuccess(
           data['token'],
+          data['user']['_id'],
           data['user']['email'],
           data['user']['fname'],
           data['user']['lname'],
@@ -63,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         await Provider.of<AuthProvider>(context, listen: false).loginSuccess(
           data['token'],
+          data['user']['_id'],
           data['user']['email'],
           data['user']['fname'],
           data['user']['lname'],

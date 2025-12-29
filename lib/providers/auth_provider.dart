@@ -5,11 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = true;
+  String? _token;
+  String? _userId;
   String? _email;
   String? _name;
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
+  String? get token => _token;
+  String? get userId => _userId;
   String? get email => _email;
   String? get name => _name;
 
@@ -19,6 +23,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> loginSuccess(
     String token,
+    String userId,
     String email,
     String fname,
     String lname,
@@ -26,10 +31,13 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await AuthService.saveUser(token, email);
 
+    await prefs.setString('userId', userId);
     await prefs.setString('fname', fname);
     await prefs.setString('lname', lname);
 
     _isAuthenticated = true;
+    _token = token;
+    _userId = userId;
     _email = email;
     _name = '$fname $lname';
     notifyListeners();
@@ -44,6 +52,8 @@ class AuthProvider with ChangeNotifier {
 
     if (data['token'] != null && data['email'] != null) {
       _isAuthenticated = true;
+      _token = data['token'];
+      _userId = prefs.getString('userId');
       _email = data['email'];
 
       String fname = prefs.getString('fname') ?? "";
@@ -60,6 +70,8 @@ class AuthProvider with ChangeNotifier {
     await prefs.remove('fname');
     await prefs.remove('lname');
     _isAuthenticated = false;
+    _token = null;
+    _userId = null;
     _email = null;
     _name = null;
     notifyListeners();

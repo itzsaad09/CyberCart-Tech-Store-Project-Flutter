@@ -1,14 +1,15 @@
 import 'package:cybercart/utils/login_screen.dart';
 import 'package:cybercart/utils/signup_screen.dart';
 import 'package:cybercart/utils/myorders.dart';
-import 'package:cybercart/utils/faqs_screen.dart';
-import 'package:cybercart/utils/app_settings.dart';
 import 'package:cybercart/utils/whishlist.dart';
+import 'package:cybercart/utils/myaddresses.dart';
+import 'package:cybercart/utils/app_settings.dart';
+import 'package:cybercart/utils/faqs_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Added for state management
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../providers/auth_provider.dart'; // Import your AuthProvider
+import '../providers/auth_provider.dart';
 
 enum AuthViewState { profile, login, signup }
 
@@ -325,11 +326,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           title: 'My Orders',
                           subtitle: 'Track, return, or buy again',
                           onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const MyOrdersScreen(),
-                              ),
-                            );
+                            if (authProvider.isAuthenticated &&
+                                authProvider.userId != null) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => MyOrdersScreen(
+                                    userId: authProvider.userId!,
+                                    token: authProvider.token!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Error: User session not found.",
+                                  ),
+                                ),
+                              );
+                            }
                           },
                         ),
                         _buildDivider(),
@@ -352,7 +367,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.location_on_outlined,
                           title: 'Addresses',
                           subtitle: 'Manage shipping locations',
-                          onTap: () {},
+                          onTap: () {
+                            if (authProvider.isAuthenticated &&
+                                authProvider.token != null) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => MyAddressesScreen(
+                                    userId: authProvider.userId!,
+                                    token: authProvider.token!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Error: User session not found.",
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                         ),
                       ],
                     ),
