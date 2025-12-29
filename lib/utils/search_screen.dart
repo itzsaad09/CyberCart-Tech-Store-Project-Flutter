@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'package:cybercart/models/product_model.dart';
-
 import 'package:cybercart/utils/product_view.dart';
+import 'package:cybercart/services/product_service.dart';
 
 class SearchScreen extends StatefulWidget {
   final String initialQuery;
@@ -16,60 +15,8 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _currentQuery = '';
-
-  final List<Product> _allProducts = [
-    const Product(
-      id: 'S001',
-      name: 'Airpods Pro Max Headset',
-      price: 9999.0,
-      imageUrl: '',
-      category: 'Headphones',
-    ),
-    const Product(
-      id: 'S002',
-      name: 'Type-C Fast Charger Cable',
-      price: 599.0,
-      imageUrl: '',
-      category: 'Charger & Cables',
-    ),
-    const Product(
-      id: 'S003',
-      name: 'Gaming Mouse Pad XXL',
-      price: 1450.0,
-      imageUrl: '',
-      category: 'Gaming',
-    ),
-    const Product(
-      id: 'S004',
-      name: 'Smart Watch Series 8',
-      price: 7999.0,
-      imageUrl: '',
-      category: 'Smart Watches',
-    ),
-    const Product(
-      id: 'S005',
-      name: 'Mini Portable Speaker',
-      price: 2100.0,
-      imageUrl: '',
-      category: 'Speakers',
-    ),
-    const Product(
-      id: 'V001',
-      name: 'D106 Mooon Mobile Phone Cooler',
-      price: 3500.0,
-      imageUrl: '',
-      category: 'Smart Watches',
-    ),
-    const Product(
-      id: 'N001',
-      name: 'JBL S278 Wireless Bluetooth Speaker',
-      price: 2450.0,
-      imageUrl: '',
-      category: 'Speakers',
-    ),
-  ];
-
   List<Product> _searchResults = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -78,37 +25,57 @@ class _SearchScreenState extends State<SearchScreen> {
     if (widget.initialQuery.isNotEmpty) {
       _searchController.text = widget.initialQuery;
       _currentQuery = widget.initialQuery;
+      // Fetch initial results if a query was passed from HomeScreen
+      _performSearch(widget.initialQuery);
     }
 
-    _searchController.addListener(_filterResults);
-    if (widget.initialQuery.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _filterResults());
-    }
+    // Listener for real-time search as the user types
+    _searchController.addListener(() {
+      final query = _searchController.text;
+      if (query != _currentQuery) {
+        _performSearch(query);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_filterResults);
     _searchController.dispose();
     super.dispose();
   }
 
-  void _filterResults() {
-    final query = _searchController.text.toLowerCase().trim();
-
+  /// Hits the backend via ProductService to get matching products
+  Future<void> _performSearch(String query) async {
+    final trimmedQuery = query.trim();
+    
     setState(() {
-      _currentQuery = query;
-      if (query.isEmpty) {
-        _searchResults = [];
-        return;
-      }
-
-      _searchResults = _allProducts.where((product) {
-        final nameLower = product.name.toLowerCase();
-        final categoryLower = product.category.toLowerCase();
-        return nameLower.contains(query) || categoryLower.contains(query);
-      }).toList();
+      _currentQuery = trimmedQuery;
     });
+
+    if (trimmedQuery.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Passes the keyword to req.query.keyword in your backend controller
+      final results = await ProductService.getProducts(keyword: trimmedQuery);
+      
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Search Error: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _handleProductTap(Product product) {
@@ -133,24 +100,21 @@ class _SearchScreenState extends State<SearchScreen> {
           decoration: InputDecoration(
             hintText: "Search CyberCart...",
             border: InputBorder.none,
-
             suffixIcon: _currentQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, color: Colors.grey),
                     onPressed: () {
                       _searchController.clear();
-                      _filterResults();
                     },
                   )
                 : null,
           ),
-          onSubmitted: (value) {
-            _filterResults();
-          },
+          onSubmitted: (value) => _performSearch(value),
         ),
-        systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
       ),
-      body: _buildBody(context),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator()) 
+          : _buildBody(context),
     );
   }
 
@@ -179,15 +143,11 @@ class _SearchScreenState extends State<SearchScreen> {
           const Divider(),
           Wrap(
             spacing: 8.0,
-            children: ['Airpods', 'Charger', 'Smart Watch', 'Gaming'].map((
-              tag,
-            ) {
+            children: ['Airpods', 'Charger', 'Smart Watch', 'Gaming'].map((tag) {
               return ActionChip(
                 label: Text(tag),
                 onPressed: () {
                   _searchController.text = tag;
-
-                  _filterResults();
                 },
               );
             }).toList(),
@@ -204,14 +164,23 @@ class _SearchScreenState extends State<SearchScreen> {
         final product = _searchResults[index];
         return ListTile(
           leading: Container(
-            width: 40,
-            height: 40,
-            color: Colors.grey.shade200,
-            child: const Icon(
-              Icons.image_outlined,
-              size: 20,
-              color: Colors.grey,
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
             ),
+            child: product.images.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      product.images[0],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => 
+                          const Icon(Icons.broken_image, size: 20),
+                    ),
+                  )
+                : const Icon(Icons.image_outlined, size: 20, color: Colors.grey),
           ),
           title: Text(product.name),
           subtitle: Text(
@@ -228,21 +197,9 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.sentiment_dissatisfied_outlined,
-            size: 60,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.sentiment_dissatisfied_outlined, size: 60, color: Colors.grey),
           const SizedBox(height: 16),
-          Text(
-            'No results found for "$_currentQuery"',
-            style: const TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Try adjusting your search terms.',
-            style: TextStyle(color: Colors.grey),
-          ),
+          Text('No results found for "$_currentQuery"', style: const TextStyle(fontSize: 18, color: Colors.grey)),
         ],
       ),
     );

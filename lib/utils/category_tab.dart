@@ -14,27 +14,15 @@ final List<String> productCategories = [
   'Tripods',
 ];
 
-class CategoryTab extends StatefulWidget {
+class CategoryTab extends StatelessWidget {
+  final String selectedCategory;
   final ValueChanged<String>? onCategorySelected;
 
-  const CategoryTab({super.key, this.onCategorySelected});
-
-  @override
-  State<CategoryTab> createState() => _CategoryTabState();
-}
-
-class _CategoryTabState extends State<CategoryTab> {
-  String _selectedCategory = '';
-
-  void _selectCategory(String category) {
-    final newSelection = category == _selectedCategory ? '' : category;
-
-    setState(() {
-      _selectedCategory = newSelection;
-    });
-
-    widget.onCategorySelected?.call(newSelection);
-  }
+  const CategoryTab({
+    super.key,
+    required this.selectedCategory,
+    this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +36,9 @@ class _CategoryTabState extends State<CategoryTab> {
         itemBuilder: (context, index) {
           final category = productCategories[index];
 
-          final isSelected = category == _selectedCategory;
+          final isSelected =
+              (selectedCategory == '' && category == '') ||
+              (category == selectedCategory);
 
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -64,14 +54,9 @@ class _CategoryTabState extends State<CategoryTab> {
               backgroundColor: isSelected
                   ? Theme.of(context).primaryColor
                   : Colors.grey.shade200,
-              onPressed: () => _selectCategory(category),
+              onPressed: () => onCategorySelected?.call(category),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: isSelected
-                      ? Theme.of(context).primaryColor
-                      : Colors.transparent,
-                ),
               ),
             ),
           );

@@ -4,16 +4,16 @@ class SearchBar extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
   final ValueChanged<String> onChanged;
-
   final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onTap;
 
   const SearchBar({
     super.key,
     required this.controller,
     required this.hintText,
     required this.onChanged,
-
     this.onSubmitted,
+    this.onTap,
   });
 
   @override
@@ -25,10 +25,10 @@ class _SearchBarState extends State<SearchBar> {
   Widget build(BuildContext context) {
     return TextField(
       controller: widget.controller,
+      readOnly: true,
+      onTap: () => widget.onTap?.call(),
       style: const TextStyle(color: Colors.black, fontSize: 16),
-
       onSubmitted: widget.onSubmitted,
-
       decoration: InputDecoration(
         hintText: widget.hintText,
         hintStyle: TextStyle(color: Colors.grey[700], fontSize: 16),
@@ -42,14 +42,8 @@ class _SearchBarState extends State<SearchBar> {
           vertical: 16,
           horizontal: 16,
         ),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.search, color: Colors.grey),
-          onPressed: () {
-            widget.onSubmitted?.call(widget.controller.text);
-          },
-        ),
+        suffixIcon: const Icon(Icons.search, color: Colors.grey),
       ),
-      onChanged: widget.onChanged,
     );
   }
 }

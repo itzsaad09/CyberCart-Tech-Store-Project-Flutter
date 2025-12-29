@@ -1,32 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cybercart/models/product_model.dart'; 
-
-final List<Product> newArrivals = [
-  const Product(
-    id: 'N001',
-    name: 'JBL S278 Wireless Bluetooth Speaker',
-    price: 2450.0,
-    imageUrl: 'assets/products/speaker1.png', // Placeholder
-    category: 'Speakers',
-  ),
-  const Product(
-    id: 'N002',
-    name: 'Transformer Robot Z90 Pro with ANC 7 EQ...',
-    price: 3999.0,
-    imageUrl: 'assets/products/airpods2.png', // Placeholder
-    category: 'Earbuds',
-  ),
-  const Product(
-    id: 'N003',
-    name: 'Omax T20 Ultra Smartwatch',
-    price: 1500.0,
-    imageUrl: 'assets/products/watch2.png', // Placeholder
-    category: 'Watches',
-  ),
-];
+import 'package:cybercart/services/product_service.dart';
 
 class NewArrivalsComponent extends StatelessWidget {
-  const NewArrivalsComponent({super.key});
+  final String category;
+  const NewArrivalsComponent({super.key, this.category = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -40,21 +18,29 @@ class NewArrivalsComponent extends StatelessWidget {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
-        GridView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          // FIX: Added the required gridDelegate argument
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.7,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: newArrivals.length,
-          itemBuilder: (context, index) {
-            final product = newArrivals[index];
-            return ProductCard(product: product); 
+        FutureBuilder<List<Product>>(
+          future: ProductService.getProducts(isNewArrival: true, category: category),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final products = snapshot.data ?? [];
+
+            return GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                return ProductCard(product: products[index]);
+              },
+            );
           },
         ),
       ],
