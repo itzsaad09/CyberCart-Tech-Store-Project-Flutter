@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/address_model.dart';
 
 class AddressService {
-  static final String baseUrl = "${dotenv.env['BACKEND_URL']}/api/user";
+  static final String baseUrl = "${dotenv.env['BACKEND_URL']}/user";
 
   static Future<List<ShippingAddress>> fetchAddresses(String userId) async {
     try {

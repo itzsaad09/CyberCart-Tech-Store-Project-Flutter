@@ -28,6 +28,26 @@ class CartService {
     }
   }
 
+  static Future<bool> addToCart({
+    required String userId,
+    required String token,
+    required String productId,
+    required String color,
+    required int quantity,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/add'),
+      headers: {'token': token, 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': userId,
+        'productId': productId,
+        'color': color,
+        'quantity': quantity,
+      }),
+    );
+    return response.statusCode == 200;
+  }
+
   static Future<bool> updateQuantity(
     String userId,
     String token,

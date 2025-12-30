@@ -1,34 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-class ShippingAddress {
-  final String name;
-  final String street;
-  final String city;
-  final String postalCode;
-  final String? addressLine2;
-  final String? phone;
-  final String? state;
-  final String? country;
-
-  const ShippingAddress({
-    required this.name,
-    required this.street,
-    required this.city,
-    required this.postalCode,
-    this.addressLine2,
-    this.phone,
-    this.state,
-    this.country,
-  });
-
-  String get displayDetails {
-    final line1 = '$street${addressLine2 != null && addressLine2!.isNotEmpty ? ', $addressLine2' : ''}';
-    final line2 = '$city, ${state ?? postalCode}, ${country ?? ''}';
-    final line3 = 'Phone: ${phone ?? 'N/A'}';
-    return '$line1\n$line2\n$line3';
-  }
-}
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/address_model.dart';
+import '../services/address_service.dart';
+import '../services/order_service.dart';
 
 class PaymentMethod {
   final String type;
@@ -39,8 +15,9 @@ class PaymentMethod {
 
 class CheckoutScreen extends StatefulWidget {
   final double totalAmount;
+  final List<dynamic> cartItems;
 
-  const CheckoutScreen({super.key, required this.totalAmount});
+  const CheckoutScreen({super.key, required this.totalAmount, required this.cartItems});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -49,30 +26,26 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _currentStep = 0;
 
-  // --- Address State ---
-  ShippingAddress _selectedAddress = const ShippingAddress(
-    name: 'John Doe',
-    street: '123 Tech Avenue',
-    city: 'San Francisco',
-    postalCode: '94107',
-    addressLine2: 'Apt 101',
-    phone: '+92 300 1234567',
-    state: 'CA',
-    country: 'USA',
-  );
+  // --- Backend Data State ---
+  List<ShippingAddress> _availableAddresses = [];
+  bool _isLoadingAddresses = true;
+  ShippingAddress? _selectedAddress;
 
-  final List<ShippingAddress> _availableAddresses = [
-    const ShippingAddress(
-      name: 'John Doe',
-      street: '123 Tech Avenue',
-      city: 'San Francisco',
-      postalCode: '94107',
-      addressLine2: 'Apt 101',
-      phone: '+92 300 1234567',
-      state: 'CA',
-      country: 'USA',
-    ),
+  // --- Schedule Delivery State ---
+  DateTime? _selectedDeliveryDate;
+  String? _selectedTimeSlot;
+
+  final List<String> _timeSlots = [
+    "08:00 AM - 09:00 AM", "09:00 AM - 10:00 AM", "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM", "12:00 PM - 01:00 PM", "01:00 PM - 02:00 PM",
+    "02:00 PM - 03:00 PM", "03:00 PM - 04:00 PM", "04:00 PM - 05:00 PM",
+    "05:00 PM - 06:00 PM", "06:00 PM - 07:00 PM", "07:00 PM - 08:00 PM",
+    "08:00 PM - 09:00 PM", "09:00 PM - 10:00 PM", "10:00 PM - 11:00 PM",
+    "11:00 PM - 12:00 AM",
   ];
+
+  DateTime get _minDate => DateTime.now().add(const Duration(days: 3));
+  DateTime get _maxDate => DateTime.now().add(const Duration(days: 10));
 
   // --- Payment State ---
   PaymentMethod _selectedPayment = const PaymentMethod(
@@ -85,7 +58,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     const PaymentMethod(type: 'Card', details: 'Visa ending in 4242'),
   ];
 
-  // --- Controllers (Address) ---
+  // --- Controllers ---
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
@@ -94,12 +67,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _stateController = TextEditingController();
   final TextEditingController _postalController = TextEditingController();
   final TextEditingController _countryController = TextEditingController(text: 'Pakistan');
-
-  // --- Controllers (Card) ---
   final TextEditingController _cardNumberController = TextEditingController();
   final TextEditingController _cardNameController = TextEditingController();
   final TextEditingController _cardExpiryController = TextEditingController();
   final TextEditingController _cardCvvController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAddresses(); // Initial fetch
+  }
+
+  // Fetch logic from your working addresses screen
+  Future<void> _fetchAddresses() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) return;
+
+    if (!mounted) return;
+    setState(() => _isLoadingAddresses = true);
+    
+    try {
+      final results = await AddressService.fetchAddresses(auth.userId!);
+      setState(() {
+        _availableAddresses = results;
+        if (_availableAddresses.isNotEmpty && _selectedAddress == null) {
+          _selectedAddress = _availableAddresses[0];
+        }
+      });
+    } catch (e) {
+      debugPrint("Address Fetch Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingAddresses = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -124,6 +124,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _onStepTapped(int step) => setState(() => _currentStep = step);
 
   void _onStepContinue() {
+    if (_currentStep == 0 && _selectedAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select or add a shipping address.')),
+      );
+      return;
+    }
     if (_currentStep < _getSteps().length - 1) {
       setState(() => _currentStep++);
     } else {
@@ -139,18 +145,69 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _placeOrder() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Order placed successfully!')),
+
+  Future<void> _placeOrder() async {
+    if (_selectedDeliveryDate == null || _selectedTimeSlot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please schedule your delivery.')),
+      );
+      return;
+    }
+
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    const double shippingFee = 150.0;
+    
+    // Format payment method for backend
+    final String paymentMethodKey = _selectedPayment.type == 'Card' 
+        ? 'credit_card' 
+        : 'cash_on_delivery';
+
+    // Prepare order data matching your orderController.js
+    final result = await OrderService.placeOrder(
+      userId: auth.userId!,
+      token: auth.token!,
+      items: widget.cartItems,
+      amount: widget.totalAmount,
+      shippingCharges: shippingFee,
+      address: {
+        'fullName': _selectedAddress!.fullName,
+        'addressLine1': _selectedAddress!.addressLine1,
+        'addressLine2': _selectedAddress!.addressLine2,
+        'city': _selectedAddress!.city,
+        'state': _selectedAddress!.state,
+        'postalCode': _selectedAddress!.postalCode,
+        'phoneNumber': _selectedAddress!.phoneNumber,
+      },
+      paymentMethod: paymentMethodKey,
+      deliveryDate: _selectedDeliveryDate!,
+      deliveryTimeSlot: _selectedTimeSlot!,
+      cardDetails: paymentMethodKey == 'credit_card' ? {
+        'cardName': _cardNameController.text,
+        'cardNumber': _cardNumberController.text,
+        'expiryDate': _cardExpiryController.text,
+      } : null,
     );
-    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order Placed Successfully!'), backgroundColor: Colors.green),
+      );
+      // Return to home and clear navigation stack
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'Failed to place order'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   List<Step> _getSteps() {
     return [
       Step(
         title: const Text('Shipping Address'),
-        content: _buildAddressStep(),
+        content: _isLoadingAddresses 
+            ? const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator())) 
+            : _buildAddressStep(),
         isActive: _currentStep == 0,
         state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       ),
@@ -162,31 +219,131 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       Step(
         title: const Text('Review & Pay'),
-        content: _buildReviewStep(),
+        content: Column(
+          children: [
+            _buildScheduleDeliverySection(),
+            const SizedBox(height: 20),
+            _buildReviewStep(),
+          ],
+        ),
         isActive: _currentStep == 2,
         state: StepState.indexed,
       ),
     ];
   }
 
+  Widget _buildScheduleDeliverySection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Schedule Delivery', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Delivery Date', style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: _minDate,
+                            firstDate: _minDate,
+                            lastDate: _maxDate,
+                          );
+                          if (picked != null) setState(() => _selectedDeliveryDate = picked);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[850] : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _selectedDeliveryDate == null ? 'dd/mm/yyyy' : "${_selectedDeliveryDate!.day}/${_selectedDeliveryDate!.month}/${_selectedDeliveryDate!.year}",
+                                style: TextStyle(color: _selectedDeliveryDate == null ? Colors.grey : null, fontSize: 12),
+                              ),
+                              const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Time Slot', style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey[850] : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            hint: const Text('Select Slot', style: TextStyle(fontSize: 12)),
+                            value: _selectedTimeSlot,
+                            items: _timeSlots.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)))).toList(),
+                            onChanged: (val) => setState(() => _selectedTimeSlot = val),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAddressStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
-            borderRadius: BorderRadius.circular(12),
+        if (_selectedAddress != null)
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.location_on_outlined),
+              title: Text(_selectedAddress!.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${_selectedAddress!.addressLine1}, ${_selectedAddress!.city}'),
+              trailing: const Icon(Icons.edit, color: Colors.grey),
+              onTap: () => _showAddressSelector(context, state: this),
+            ),
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Text("No saved addresses found.", style: TextStyle(color: Colors.grey)),
           ),
-          child: ListTile(
-            leading: const Icon(Icons.location_on_outlined),
-            title: Text(_selectedAddress.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${_selectedAddress.street}, ${_selectedAddress.city}'),
-            trailing: const Icon(Icons.edit, color: Colors.grey),
-            onTap: () => _showAddressSelector(context, state: this),
-          ),
-        ),
         TextButton.icon(
           icon: const Icon(Icons.add_location_alt_outlined),
           label: const Text('Add New Address'),
@@ -224,17 +381,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       children: [
         Text('Total Payable Amount:', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
-        Text(
-          'Rs. ${widget.totalAmount.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
-              ),
-        ),
+        Text('Rs. ${widget.totalAmount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
         const Divider(height: 30),
-        _buildReviewSection(context, 'Ship To', _selectedAddress.displayDetails, Icons.location_on),
+        if (_selectedAddress != null)
+          _buildReviewSection(
+            context,
+            'Ship To',
+            '${_selectedAddress!.fullName}\n${_selectedAddress!.addressLine1}${_selectedAddress!.addressLine2 != null && _selectedAddress!.addressLine2!.isNotEmpty ? ', ${_selectedAddress!.addressLine2}' : ''}\n${_selectedAddress!.city}, ${_selectedAddress!.state ?? ''} ${_selectedAddress!.postalCode}',
+            Icons.location_on,
+          ),
         const Divider(),
-        _buildReviewSection(context, 'Pay With', '${_selectedPayment.type}\n${_selectedPayment.details}', Icons.payment),
+        _buildReviewSection(
+          context,
+          'Pay With',
+          '${_selectedPayment.type}\n${_selectedPayment.details}',
+          Icons.payment,
+        ),
       ],
     );
   }
@@ -278,12 +440,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             padding: const EdgeInsets.only(top: 20.0),
             child: Row(
               children: [
-                ElevatedButton(
-                  onPressed: details.onStepContinue,
-                  child: Text(_currentStep == 2 ? 'PLACE ORDER' : 'CONTINUE'),
-                ),
-                if (_currentStep != 0)
-                  TextButton(onPressed: details.onStepCancel, child: const Text('BACK')),
+                ElevatedButton(onPressed: details.onStepContinue, child: Text(_currentStep == 2 ? 'PLACE ORDER' : 'CONTINUE')),
+                if (_currentStep != 0) TextButton(onPressed: details.onStepCancel, child: const Text('BACK')),
               ],
             ),
           );
@@ -293,7 +451,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-// --- Modals & Functions ---
+// --- Global UI Helpers ---
 
 void _showAddressSelector(BuildContext context, {required _CheckoutScreenState state}) {
   showModalBottomSheet(
@@ -305,21 +463,20 @@ void _showAddressSelector(BuildContext context, {required _CheckoutScreenState s
         children: [
           Text('Select Shipping Address', style: Theme.of(context).textTheme.titleLarge),
           const Divider(),
+          if (state._availableAddresses.isEmpty)
+            const Padding(padding: EdgeInsets.all(20), child: Text("No saved addresses.")),
           ...state._availableAddresses.map((address) => ListTile(
-                title: Text(address.name),
-                subtitle: Text('${address.street}, ${address.city}'),
-                onTap: () {
-                  state.setState(() => state._selectedAddress = address);
-                  Navigator.pop(context);
-                },
-              )),
+            title: Text(address.fullName),
+            subtitle: Text('${address.addressLine1}, ${address.city}'),
+            onTap: () {
+              state.setState(() => state._selectedAddress = address);
+              Navigator.pop(context);
+            },
+          )),
           TextButton.icon(
             icon: const Icon(Icons.add_location_alt_outlined),
             label: const Text('Add New Address'),
-            onPressed: () {
-              Navigator.pop(context);
-              _showAddAddressForm(context, state: state);
-            },
+            onPressed: () { Navigator.pop(context); _showAddAddressForm(context, state: state); },
           )
         ],
       ),
@@ -330,10 +487,10 @@ void _showAddressSelector(BuildContext context, {required _CheckoutScreenState s
 void _showAddAddressForm(BuildContext context, {required _CheckoutScreenState state, ShippingAddress? addressToEdit}) {
   final isEditing = addressToEdit != null;
   if (isEditing) {
-    state._nameController.text = addressToEdit.name;
-    state._address1Controller.text = addressToEdit.street;
+    state._nameController.text = addressToEdit.fullName;
+    state._address1Controller.text = addressToEdit.addressLine1;
     state._address2Controller.text = addressToEdit.addressLine2 ?? '';
-    state._phoneController.text = addressToEdit.phone ?? '';
+    state._phoneController.text = addressToEdit.phoneNumber ?? '';
     state._cityController.text = addressToEdit.city;
     state._stateController.text = addressToEdit.state ?? '';
     state._postalController.text = addressToEdit.postalCode;
@@ -354,10 +511,7 @@ void _showAddAddressForm(BuildContext context, {required _CheckoutScreenState st
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (bc) => Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -373,41 +527,32 @@ void _showAddAddressForm(BuildContext context, {required _CheckoutScreenState st
             const SizedBox(height: 16),
             _buildTextField(controller: state._phoneController, label: 'Phone Number', hint: 'e.g., +92 123 4567890', keyboardType: TextInputType.phone),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildTextField(controller: state._cityController, label: 'City', hint: 'Lahore')),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTextField(controller: state._stateController, label: 'State/Province', hint: 'Punjab')),
-              ],
-            ),
+            Row(children: [Expanded(child: _buildTextField(controller: state._cityController, label: 'City', hint: 'Lahore')), const SizedBox(width: 16), Expanded(child: _buildTextField(controller: state._stateController, label: 'State/Province', hint: 'Punjab'))]),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildTextField(controller: state._postalController, label: 'Postal Code', hint: '90210', keyboardType: TextInputType.number)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTextField(controller: state._countryController, label: 'Country', hint: 'Pakistan')),
-              ],
-            ),
+            Row(children: [Expanded(child: _buildTextField(controller: state._postalController, label: 'Postal Code', hint: '90210', keyboardType: TextInputType.number)), const SizedBox(width: 16), Expanded(child: _buildTextField(controller: state._countryController, label: 'Country', hint: 'Pakistan'))]),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  final auth = Provider.of<AuthProvider>(context, listen: false);
                   final newAddr = ShippingAddress(
-                    name: state._nameController.text,
-                    street: state._address1Controller.text,
+                    fullName: state._nameController.text,
+                    addressLine1: state._address1Controller.text,
                     addressLine2: state._address2Controller.text,
-                    phone: state._phoneController.text,
+                    phoneNumber: state._phoneController.text,
                     city: state._cityController.text,
                     state: state._stateController.text,
                     postalCode: state._postalController.text,
                     country: state._countryController.text,
                   );
-                  state.setState(() {
-                    if (!isEditing) state._availableAddresses.add(newAddr);
-                    state._selectedAddress = newAddr;
-                  });
-                  Navigator.pop(context);
+                  // Call Service mirroring MyAddressesScreen logic
+                  bool success = await AddressService.addAddress(auth.userId!, newAddr);
+                  if (success) {
+                    await state._fetchAddresses();
+                    state.setState(() => state._selectedAddress = newAddr);
+                    Navigator.pop(context);
+                  }
                 },
                 child: Text(isEditing ? 'UPDATE ADDRESS' : 'SAVE ADDRESS'),
               ),
@@ -421,169 +566,22 @@ void _showAddAddressForm(BuildContext context, {required _CheckoutScreenState st
 }
 
 void _showPaymentTypeSelector(BuildContext context, {required _CheckoutScreenState state}) {
-  showModalBottomSheet(
-    context: context,
-    builder: (bc) => Wrap(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.payments_outlined),
-          title: const Text('Cash on Delivery'),
-          onTap: () {
-            state.setState(() => state._selectedPayment = state._availablePayments[0]);
-            Navigator.pop(context);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.credit_card_outlined),
-          title: const Text('Credit/Debit Card'),
-          onTap: () {
-            Navigator.pop(context);
-            _showCardSelector(context, state: state);
-          },
-        ),
-      ],
-    ),
-  );
+  showModalBottomSheet(context: context, builder: (bc) => Wrap(children: [ListTile(leading: const Icon(Icons.payments_outlined), title: const Text('Cash on Delivery'), onTap: () { state.setState(() => state._selectedPayment = state._availablePayments[0]); Navigator.pop(context); }), ListTile(leading: const Icon(Icons.credit_card_outlined), title: const Text('Credit/Debit Card'), onTap: () { Navigator.pop(context); _showCardSelector(context, state: state); })]));
 }
 
 void _showCardSelector(BuildContext context, {required _CheckoutScreenState state}) {
   final savedCards = state._availablePayments.where(state._isSavedCard).toList();
-  showModalBottomSheet(
-    context: context,
-    builder: (bc) => Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Select Saved Card', style: Theme.of(context).textTheme.titleLarge),
-          const Divider(),
-          ...savedCards.map((card) => ListTile(
-                title: Text(card.type),
-                subtitle: Text(card.details),
-                onTap: () {
-                  state.setState(() => state._selectedPayment = card);
-                  Navigator.pop(context);
-                },
-              )),
-          TextButton.icon(
-            icon: const Icon(Icons.add_card),
-            label: const Text('Add New Card'),
-            onPressed: () {
-              Navigator.pop(context);
-              _showAddCardForm(context, state: state);
-            },
-          )
-        ],
-      ),
-    ),
-  );
+  showModalBottomSheet(context: context, builder: (bc) => Container(padding: const EdgeInsets.all(16), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('Select Saved Card', style: Theme.of(context).textTheme.titleLarge), const Divider(), ...savedCards.map((card) => ListTile(title: Text(card.type), subtitle: Text(card.details), onTap: () { state.setState(() => state._selectedPayment = card); Navigator.pop(context); })), TextButton.icon(icon: const Icon(Icons.add_card), label: const Text('Add New Card'), onPressed: () { Navigator.pop(context); _showAddCardForm(context, state: state); })])));
 }
 
 void _showAddCardForm(BuildContext context, {required _CheckoutScreenState state}) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (bc) => Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Text('Add Card Details', style: Theme.of(context).textTheme.headlineSmall),
-            const Divider(height: 32),
-            _buildTextField(controller: state._cardNameController, label: 'Cardholder Name', hint: 'John Doe'),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: state._cardNumberController,
-              label: 'Card Number',
-              hint: 'XXXX XXXX XXXX XXXX',
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(16),
-                CardNumberFormatter(),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField(
-                    controller: state._cardExpiryController,
-                    label: 'Expiry',
-                    hint: 'MM/YY',
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(4),
-                      CardExpiryFormatter(),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildTextField(
-                    controller: state._cardCvvController,
-                    label: 'CVV',
-                    hint: '***',
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [LengthLimitingTextInputFormatter(3)],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final last4 = state._cardNumberController.text.replaceAll(' ', '');
-                  final newCard = PaymentMethod(
-                    type: 'Card',
-                    details: 'Visa ending in ${last4.substring(last4.length - 4)}',
-                  );
-                  state.setState(() {
-                    state._availablePayments.add(newCard);
-                    state._selectedPayment = newCard;
-                  });
-                  Navigator.pop(context);
-                },
-                child: const Text('SAVE CARD'),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    ),
-  );
+  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (bc) => Container(decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(20))), padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom), child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Column(children: [Text('Add Card Details', style: Theme.of(context).textTheme.headlineSmall), const Divider(height: 32), _buildTextField(controller: state._cardNameController, label: 'Cardholder Name', hint: 'John Doe'), const SizedBox(height: 16), _buildTextField(controller: state._cardNumberController, label: 'Card Number', hint: 'XXXX XXXX XXXX XXXX', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(16), CardNumberFormatter()]), const SizedBox(height: 16), Row(children: [Expanded(child: _buildTextField(controller: state._cardExpiryController, label: 'Expiry', hint: 'MM/YY', inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4), CardExpiryFormatter()])), const SizedBox(width: 16), Expanded(child: _buildTextField(controller: state._cardCvvController, label: 'CVV', hint: '***', keyboardType: TextInputType.number, inputFormatters: [LengthLimitingTextInputFormatter(3)]))]), const SizedBox(height: 32), SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () { final last4 = state._cardNumberController.text.replaceAll(' ', ''); final newCard = PaymentMethod(type: 'Card', details: 'Visa ending in ${last4.substring(last4.length - 4)}'); state.setState(() { state._availablePayments.add(newCard); state._selectedPayment = newCard; }); Navigator.pop(context); }, child: const Text('SAVE CARD'))), const SizedBox(height: 16)]))));
 }
 
-Widget _buildTextField({
-  required TextEditingController controller,
-  required String label,
-  String? hint,
-  TextInputType keyboardType = TextInputType.text,
-  List<TextInputFormatter>? inputFormatters,
-}) {
+Widget _buildTextField({required TextEditingController controller, required String label, String? hint, TextInputType keyboardType = TextInputType.text, List<TextInputFormatter>? inputFormatters}) {
   return Builder(builder: (context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        filled: true,
-        fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-      ),
-    );
+    return TextFormField(controller: controller, keyboardType: keyboardType, inputFormatters: inputFormatters, decoration: InputDecoration(labelText: label, hintText: hint, filled: true, fillColor: isDark ? Colors.grey[850] : Colors.grey[100], border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)));
   });
 }
 

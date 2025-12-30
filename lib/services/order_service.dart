@@ -23,4 +23,42 @@ class OrderService {
       throw Exception('Failed to load orders');
     }
   }
+
+  static Future<Map<String, dynamic>> placeOrder({
+    required String userId,
+    required String token,
+    required List<dynamic> items,
+    required double amount,
+    required double shippingCharges,
+    required Map<String, dynamic> address,
+    required String paymentMethod,
+    required DateTime deliveryDate,
+    required String deliveryTimeSlot,
+    Map<String, dynamic>? cardDetails,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/place'),
+        headers: {
+          'Content-Type': 'application/json',
+          'token': token, // Matches userAuth middleware requirement
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'cartItemsArray': items,
+          'shippingFees': shippingCharges,
+          'finalTotalBill': amount + shippingCharges,
+          'shippingInfo': address,
+          'paymentMethod': paymentMethod,
+          'cardDetails': cardDetails,
+          'deliveryDate': deliveryDate.toIso8601String(),
+          'deliveryTimeSlot': deliveryTimeSlot,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'message': 'Connection error: $e'};
+    }
+  }
 }

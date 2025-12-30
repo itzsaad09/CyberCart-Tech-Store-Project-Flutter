@@ -115,9 +115,23 @@ Future<void> _loadCart() async {
       return;
     }
 
+    // Map your local CartItem objects to the JSON structure 
+    // expected by orderController.js
+    final List<Map<String, dynamic>> itemsForBackend = _cartItems.map((item) => {
+      'productId': item.productId,
+      'name': item.name,
+      'price': item.price,
+      'quantity': item.quantity,
+      'color': item.color,
+      'image': item.imageUrl, // Backend uses this for history
+    }).toList();
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CheckoutScreen(totalAmount: _total),
+        builder: (context) => CheckoutScreen(
+          totalAmount: _subtotal, // Pass subtotal, checkout calculates final with shipping
+          cartItems: itemsForBackend, // Pass the formatted items list
+        ),
       ),
     );
   }
