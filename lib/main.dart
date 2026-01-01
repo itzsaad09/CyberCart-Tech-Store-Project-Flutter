@@ -40,7 +40,6 @@ class ThemeController extends InheritedWidget {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-
   await GoogleSignIn.instance.initialize(
     serverClientId: dotenv.env['WEB_GOOGLE_CLIENT_ID']!,
   );

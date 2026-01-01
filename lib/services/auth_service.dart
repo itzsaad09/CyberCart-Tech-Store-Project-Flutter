@@ -98,7 +98,9 @@ class AuthService {
         throw Exception('Google sign-in was cancelled by the user');
       }
 
-      const List<String> scopes = ['email', 'profile'];
+      const List<String> scopes = ['openid',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',];
 
       final GoogleSignInClientAuthorization? authorization = await googleUser
           .authorizationClient

@@ -23,31 +23,28 @@ class _CartState extends State<Cart> {
   @override
   void initState() {
     super.initState();
-    _loadCart(); // Fetch cart data on screen entry
+    _loadCart();
   }
 
-  // Fetches data using the GET /get?userId=... endpoint
-  // Inside _CartState class
-Future<void> _loadCart() async {
-  final auth = Provider.of<AuthProvider>(context, listen: false);
-  if (!auth.isAuthenticated) return;
+  Future<void> _loadCart() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) return;
 
-  try {
-    // 1. Get items from backend
-    final items = await CartService.fetchCart(auth.userId!, auth.token!);
-    
-    if (mounted) {
-      setState(() {
-        _cartItems = items;
-        // 2. Calculate subtotal locally in Flutter
-        _subtotal = _cartItems.fold(0.0, (sum, item) => sum + item.total);
-        _isLoading = false;
-      });
+    try {
+      final items = await CartService.fetchCart(auth.userId!, auth.token!);
+
+      if (mounted) {
+        setState(() {
+          _cartItems = items;
+
+          _subtotal = _cartItems.fold(0.0, (sum, item) => sum + item.total);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
-  } catch (e) {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
 
   double get _shippingFee {
     if (_subtotal >= freeShippingThreshold || _subtotal == 0) {
@@ -58,80 +55,76 @@ Future<void> _loadCart() async {
 
   double get _total => _subtotal + _shippingFee;
 
-  // Updates quantity using POST /update
   void _updateQuantity(String productId, String color, int newQuantity) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    
-    // Setting quantity < 1 triggers deletion in the backend controller
+
     bool success = await CartService.updateQuantity(
-      auth.userId!, 
-      auth.token!, 
-      productId, 
-      color, 
-      newQuantity
+      auth.userId!,
+      auth.token!,
+      productId,
+      color,
+      newQuantity,
     );
 
     if (success) {
-      _loadCart(); // Refresh the UI with updated server data
+      _loadCart();
     }
   }
 
-  // Removes item using POST /delete
   void _removeItem(String productId, String color) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     bool success = await CartService.deleteItem(
-      auth.userId!, 
-      auth.token!, 
-      productId, 
-      color
+      auth.userId!,
+      auth.token!,
+      productId,
+      color,
     );
 
     if (success) {
       _loadCart();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item removed from cart.'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Item removed from cart.')));
     }
   }
 
-  // Empties cart using POST /empty
   void _clearCart() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     bool success = await CartService.clearCart(auth.userId!, auth.token!);
-    
+
     if (success) {
       _loadCart();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cart cleared!'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cart cleared!')));
     }
   }
 
   void _checkout() {
     if (_cartItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your cart is empty!'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Your cart is empty!')));
       return;
     }
 
-    // Map your local CartItem objects to the JSON structure 
-    // expected by orderController.js
-    final List<Map<String, dynamic>> itemsForBackend = _cartItems.map((item) => {
-      'productId': item.productId,
-      'name': item.name,
-      'price': item.price,
-      'quantity': item.quantity,
-      'color': item.color,
-      'image': item.imageUrl, // Backend uses this for history
-    }).toList();
+    final List<Map<String, dynamic>> itemsForBackend = _cartItems
+        .map(
+          (item) => {
+            'productId': item.productId,
+            'name': item.name,
+            'price': item.price,
+            'quantity': item.quantity,
+            'color': item.color,
+            'image': item.imageUrl,
+          },
+        )
+        .toList();
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CheckoutScreen(
-          totalAmount: _subtotal, // Pass subtotal, checkout calculates final with shipping
-          cartItems: itemsForBackend, // Pass the formatted items list
-        ),
+        builder: (context) =>
+            CheckoutScreen(totalAmount: _subtotal, cartItems: itemsForBackend),
       ),
     );
   }
@@ -151,16 +144,23 @@ Future<void> _loadCart() async {
         ],
       ),
 
-      body: _isLoading 
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cartItems.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 80,
+                    color: Colors.grey,
+                  ),
                   SizedBox(height: 16),
-                  Text('Your cart is empty!', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                  Text(
+                    'Your cart is empty!',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
                 ],
               ),
             )
@@ -223,10 +223,21 @@ class _CartItemCard extends StatelessWidget {
                 color: Theme.of(context).primaryColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: item.imageUrl != null 
-                  ? Image.network(item.imageUrl!, fit: BoxFit.cover, 
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_outlined, color: Colors.grey, size: 40))
-                  : const Icon(Icons.image_outlined, color: Colors.grey, size: 40),
+              child: item.imageUrl != null
+                  ? Image.network(
+                      item.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.image_outlined,
+                        color: Colors.grey,
+                        size: 40,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.image_outlined,
+                      color: Colors.grey,
+                      size: 40,
+                    ),
             ),
             const SizedBox(width: 12),
 
@@ -236,7 +247,9 @@ class _CartItemCard extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -261,17 +274,32 @@ class _CartItemCard extends StatelessWidget {
                             _buildQuantityButton(
                               context,
                               icon: Icons.remove,
-                              onTap: () => onQuantityChanged(item.productId, item.color, item.quantity - 1),
+                              onTap: () => onQuantityChanged(
+                                item.productId,
+                                item.color,
+                                item.quantity - 1,
+                              ),
                               isDecrement: true,
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
+                              child: Text(
+                                item.quantity.toString(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             _buildQuantityButton(
                               context,
                               icon: Icons.add,
-                              onTap: () => onQuantityChanged(item.productId, item.color, item.quantity + 1),
+                              onTap: () => onQuantityChanged(
+                                item.productId,
+                                item.color,
+                                item.quantity + 1,
+                              ),
                               isDecrement: false,
                             ),
                           ],
@@ -302,14 +330,27 @@ class _CartItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildQuantityButton(BuildContext context, {required IconData icon, required VoidCallback onTap, required bool isDecrement}) {
-    final buttonIcon = isDecrement && item.quantity == 1 ? Icons.delete_outline : icon;
+  Widget _buildQuantityButton(
+    BuildContext context, {
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool isDecrement,
+  }) {
+    final buttonIcon = isDecrement && item.quantity == 1
+        ? Icons.delete_outline
+        : icon;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Padding(
         padding: const EdgeInsets.all(4.0),
-        child: Icon(buttonIcon, size: 20, color: isDecrement && item.quantity == 1 ? Colors.red : Theme.of(context).primaryColor),
+        child: Icon(
+          buttonIcon,
+          size: 20,
+          color: isDecrement && item.quantity == 1
+              ? Colors.red
+              : Theme.of(context).primaryColor,
+        ),
       ),
     );
   }
@@ -321,16 +362,41 @@ class _CartSummary extends StatelessWidget {
   final double total;
   final VoidCallback onCheckout;
 
-  const _CartSummary({required this.subtotal, required this.shippingFee, required this.total, required this.onCheckout});
+  const _CartSummary({
+    required this.subtotal,
+    required this.shippingFee,
+    required this.total,
+    required this.onCheckout,
+  });
 
-  Widget _buildSummaryRow(BuildContext context, String title, String value, {bool isTotal = false}) {
+  Widget _buildSummaryRow(
+    BuildContext context,
+    String title,
+    String value, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: isTotal ? Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold) : const TextStyle(fontSize: 16, color: Colors.blueGrey)),
-          Text(value, style: isTotal ? Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor) : const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: isTotal
+                ? Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
+                : const TextStyle(fontSize: 16, color: Colors.blueGrey),
+          ),
+          Text(
+            value,
+            style: isTotal
+                ? Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  )
+                : const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -338,38 +404,82 @@ class _CartSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String shippingText = shippingFee == 0 ? 'Free' : 'Rs. ${shippingFee.toStringAsFixed(2)}';
-    String? savingMessage = shippingFee == 0 
-        ? '🎉 You qualify for FREE shipping!' 
-        : (freeShippingThreshold - subtotal > 0) ? 'Add Rs. ${(freeShippingThreshold - subtotal).toStringAsFixed(2)} to get FREE shipping!' : null;
+    String shippingText = shippingFee == 0
+        ? 'Free'
+        : 'Rs. ${shippingFee.toStringAsFixed(2)}';
+    String? savingMessage = shippingFee == 0
+        ? '🎉 You qualify for FREE shipping!'
+        : (freeShippingThreshold - subtotal > 0)
+        ? 'Add Rs. ${(freeShippingThreshold - subtotal).toStringAsFixed(2)} to get FREE shipping!'
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))],
-        borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildSummaryRow(context, 'Subtotal', 'Rs. ${subtotal.toStringAsFixed(2)}'),
+          _buildSummaryRow(
+            context,
+            'Subtotal',
+            'Rs. ${subtotal.toStringAsFixed(2)}',
+          ),
           _buildSummaryRow(context, 'Shipping', shippingText),
           if (savingMessage != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(savingMessage, textAlign: TextAlign.center, style: TextStyle(color: shippingFee == 0 ? Colors.green.shade700 : Colors.orange.shade700, fontWeight: FontWeight.w600)),
+              child: Text(
+                savingMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: shippingFee == 0
+                      ? Colors.green.shade700
+                      : Colors.orange.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           const Divider(height: 20, thickness: 1),
-          _buildSummaryRow(context, 'Total', 'Rs. ${total.toStringAsFixed(2)}', isTotal: true),
+          _buildSummaryRow(
+            context,
+            'Total',
+            'Rs. ${total.toStringAsFixed(2)}',
+            isTotal: true,
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: onCheckout,
               icon: const Icon(Icons.payment_outlined, color: Colors.white),
-              label: const Text('Proceed to Checkout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+              label: const Text(
+                'Proceed to Checkout',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
             ),
           ),
         ],
