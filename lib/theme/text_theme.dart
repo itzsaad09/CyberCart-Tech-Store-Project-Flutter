@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 
 class AppTextTheme {
@@ -134,6 +132,6 @@ class AppTextTheme {
       fontSize: 10.0,
       fontWeight: FontWeight.w400,
       color: Colors.white,
-    )
+    ),
   );
 }

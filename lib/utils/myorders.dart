@@ -217,10 +217,6 @@ class _OrderCard extends StatelessWidget {
                   ),
                   const Row(
                     children: [
-                      // Text(
-                      //   "Track Order",
-                      //   style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500),
-                      // ),
                       Icon(Icons.chevron_right, color: Colors.blue),
                     ],
                   ),

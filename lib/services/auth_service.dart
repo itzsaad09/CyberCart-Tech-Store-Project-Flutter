@@ -104,7 +104,7 @@ class AuthService {
 
       final GoogleSignInClientAuthorization? authorization = await googleUser
           .authorizationClient
-          ?.authorizationForScopes(scopes);
+          .authorizationForScopes(scopes);
 
       final String? accessToken = authorization?.accessToken;
 

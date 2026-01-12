@@ -1,6 +1,6 @@
+import 'package:cybercart/utils/messages_screen.dart';
 import 'package:cybercart/pages/cart.dart';
 import 'package:cybercart/pages/profile.dart';
-import 'package:cybercart/pages/trackorder.dart';
 import 'package:flutter/material.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
 import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
@@ -16,10 +16,9 @@ class CustomNavigationBar extends StatefulWidget {
 class _CustomNavigationBarState extends State<CustomNavigationBar> {
   int _selectedIndex = 0;
 
-  // Add your existing pages in this list (no need to define them here)
   final List<Widget> _pages = const [
     HomeScreen(),
-    TrackOrder(),
+    MessagesScreen(),
     Cart(),
     ProfileScreen(),
   ];
