@@ -6,11 +6,11 @@ import '../utils/myorders.dart';
 class OrderService {
   static final String baseUrl = "${dotenv.env['BACKEND_URL']}/order";
 
+  // Fetches list of all orders for a user
   static Future<List<Order>> fetchUserOrders(String userId, String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/userorders/$userId'),
       headers: {
-        'Authorization': 'Bearer $token', // Assuming userAuth middleware requires this
         'token': token, 
       },
     );
@@ -21,6 +21,28 @@ class OrderService {
       return ordersJson.map((json) => Order.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load orders');
+    }
+  }
+
+  // NEW: Fetches a single order's details for tracking
+  static Future<Map<String, dynamic>> fetchOrderById(String orderId, String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/$orderId'), // Targets orderRoute.get('/:orderId')
+        headers: {
+          'token': token, 
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['order']; // Returns the order object from controller
+      } else {
+        throw Exception('Failed to load order details');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
     }
   }
 
@@ -41,7 +63,7 @@ class OrderService {
         Uri.parse('$baseUrl/place'),
         headers: {
           'Content-Type': 'application/json',
-          'token': token, // Matches userAuth middleware requirement
+          'token': token, 
         },
         body: jsonEncode({
           'userId': userId,

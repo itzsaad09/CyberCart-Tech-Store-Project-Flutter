@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart' hide SearchBar;
-import 'package:cybercart/utils/location_bar.dart';
 import 'package:cybercart/utils/search_bar.dart';
 import 'package:cybercart/utils/slideshow.dart';
 import 'package:flutter/services.dart';
@@ -103,7 +102,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             }
+            
+            // Alphabetical sort
             products.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+            
             return GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               shrinkWrap: true,
@@ -130,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(130),
+        preferredSize: const Size.fromHeight(80), // Further reduced height
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -149,35 +151,14 @@ class _HomeScreenState extends State<HomeScreen> {
             systemOverlayStyle: SystemUiOverlayStyle.light,
             flexibleSpace: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 5.0,
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const LocationBar(location: "San Francisco, CA"),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.favorite_border,
-                            color: Colors.white,
-                          ),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SearchBar(
-                      controller: _searchController,
-                      hintText: "Search products...",
-                      onTap: () =>
-                          _navigateToSearchScreen(_searchController.text),
-                      onSubmitted: _navigateToSearchScreen,
-                      onChanged: (value) {},
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(16.0, 10.0, 16.0, 0.0),
+                child: SearchBar(
+                  controller: _searchController,
+                  hintText: "Search products...",
+                  onTap: () =>
+                      _navigateToSearchScreen(_searchController.text),
+                  onSubmitted: _navigateToSearchScreen,
+                  onChanged: (value) {},
                 ),
               ),
             ),
@@ -197,9 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedCategory: _activeFilter ?? '',
                     onCategorySelected: _handleCategoryChange,
                   ),
-
                   _buildMainContent(),
-
                   const SizedBox(height: 100),
                 ],
               ),

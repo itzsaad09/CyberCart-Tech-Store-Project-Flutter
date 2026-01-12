@@ -36,8 +36,8 @@ class _CustomNavigationBarState extends State<CustomNavigationBar> {
             label: 'Home',
           ),
           CurvedNavigationBarItem(
-            child: Icon(Icons.delivery_dining_outlined),
-            label: 'Track',
+            child: Icon(Icons.message_outlined),
+            label: 'Messages',
           ),
           CurvedNavigationBarItem(
             child: Icon(Icons.shopping_cart_outlined),

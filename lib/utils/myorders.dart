@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cybercart/services/order_service.dart';
+import 'track_order_screen.dart'; 
 
 class Order {
   final String orderId;
@@ -16,12 +17,12 @@ class Order {
     required this.itemCount,
   });
 
-  // Factory to create an Order from Backend JSON
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       orderId: json['_id'],
-      // Formatting the date from deliveryDate or statusHistory timestamp
-      date: json['orderDate'].toString().split('T')[0], 
+      date: json['orderDate'] != null 
+          ? json['orderDate'].toString().split('T')[0] 
+          : "N/A", 
       total: (json['amount'] as num).toDouble(),
       status: json['status'],
       itemCount: (json['items'] as List).length,
@@ -30,7 +31,7 @@ class Order {
 }
 
 class MyOrdersScreen extends StatelessWidget {
-  final String userId; // Pass these from your Auth State
+  final String userId;
   final String token;
 
   const MyOrdersScreen({super.key, required this.userId, required this.token});
@@ -62,19 +63,19 @@ class MyOrdersScreen extends StatelessWidget {
 
             final allOrders = snapshot.data!;
             
-            // Filter orders based on status defined in your controller
             final pending = allOrders.where((o) => 
-              o.status == 'Order Placed'  || o.status == 'Order Confirmed' || o.status == 'Order Packed'  || o.status == 'Ready To Ship' || o.status == 'Shipped' || o.status == 'Out For Delivery'
+              ['Order Placed', 'Order Confirmed', 'Order Packed', 'Ready To Ship', 'Shipped', 'Out For Delivery']
+              .contains(o.status)
             ).toList();
             
             final past = allOrders.where((o) => 
-              o.status == 'Delivered' || o.status == 'Cancelled'
+              ['Delivered', 'Cancelled'].contains(o.status)
             ).toList();
 
             return TabBarView(
               children: [
-                _OrderList(orders: pending, isPending: true),
-                _OrderList(orders: past, isPending: false),
+                _OrderList(orders: pending, isPending: true, token: token),
+                _OrderList(orders: past, isPending: false, token: token),
               ],
             );
           },
@@ -87,8 +88,9 @@ class MyOrdersScreen extends StatelessWidget {
 class _OrderList extends StatelessWidget {
   final List<Order> orders;
   final bool isPending;
+  final String token;
 
-  const _OrderList({required this.orders, required this.isPending});
+  const _OrderList({required this.orders, required this.isPending, required this.token});
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +107,7 @@ class _OrderList extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       itemCount: orders.length,
       itemBuilder: (context, index) {
-        return _OrderCard(order: orders[index]);
+        return _OrderCard(order: orders[index], token: token);
       },
     );
   }
@@ -113,20 +115,22 @@ class _OrderList extends StatelessWidget {
 
 class _OrderCard extends StatelessWidget {
   final Order order;
+  final String token;
 
-  const _OrderCard({required this.order});
+  const _OrderCard({required this.order, required this.token});
 
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Shipped':
-      case 'Processing':
+      case 'Out For Delivery':
+      case 'Ready To Ship':
         return Colors.orange.shade700;
       case 'Delivered':
         return Colors.green.shade600;
       case 'Cancelled':
         return Colors.red.shade600;
       default:
-        return Colors.grey;
+        return Colors.blue.shade600;
     }
   }
 
@@ -138,9 +142,13 @@ class _OrderCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Viewing details for Order ${order.orderId}'),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TrackOrderScreen(
+                orderId: order.orderId,
+                token: token,
+              ),
             ),
           );
         },
@@ -150,46 +158,37 @@ class _OrderCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // FIX START: Use Expanded and Ellipsis to prevent overflow
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // FIXED: Added Expanded and ellipsis to fix the "Right Overflow" error
                   Expanded(
                     child: Text(
                       'Order ID: ${order.orderId}',
-                      overflow: TextOverflow.ellipsis, // Adds "..." if too long
+                      overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                   ),
-                  const SizedBox(width: 8), // Added small gap
+                  const SizedBox(width: 8),
                   Text(
                     order.date,
                     style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
-              // FIX END
-              
               const Divider(height: 20),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     '${order.itemCount} Items',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Colors.blueGrey,
-                    ),
+                    style: const TextStyle(fontSize: 15, color: Colors.blueGrey),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(order.status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -206,7 +205,6 @@ class _OrderCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -217,7 +215,15 @@ class _OrderCard extends StatelessWidget {
                           color: Theme.of(context).primaryColor,
                         ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  const Row(
+                    children: [
+                      // Text(
+                      //   "Track Order",
+                      //   style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500),
+                      // ),
+                      Icon(Icons.chevron_right, color: Colors.blue),
+                    ],
+                  ),
                 ],
               ),
             ],

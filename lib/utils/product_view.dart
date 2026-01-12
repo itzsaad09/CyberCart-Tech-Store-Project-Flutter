@@ -101,11 +101,15 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isOutOfStock = widget.product.countInStock <= 0;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product.name),
         elevation: 0,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(icon: const Icon(Icons.share_outlined), onPressed: () {}),
           IconButton(icon: const Icon(Icons.favorite_border), onPressed: () {}),
@@ -122,7 +126,8 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                 Container(
                   height: 380,
                   width: double.infinity,
-                  color: Colors.white,
+                  // Use cardColor for the image background to provide slight contrast in dark mode
+                  color: isDark ? theme.cardColor : Colors.white,
                   child: widget.product.images.isNotEmpty
                       ? PageView.builder(
                           controller: _pageController,
@@ -133,9 +138,8 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                             child: Image.network(
                               widget.product.images[index],
                               fit: BoxFit.contain,
-
                               color: isOutOfStock
-                                  ? Colors.black.withOpacity(0.05)
+                                  ? Colors.black.withOpacity(0.2)
                                   : null,
                               colorBlendMode: isOutOfStock
                                   ? BlendMode.darken
@@ -147,7 +151,6 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                           child: Icon(Icons.image_outlined, size: 100),
                         ),
                 ),
-
                 if (widget.product.images.length > 1)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
@@ -155,14 +158,15 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
                         widget.product.images.length,
-                        (index) => Container(
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           width: _currentPage == index ? 12 : 8,
                           height: 8,
                           decoration: BoxDecoration(
                             color: _currentPage == index
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey.shade300,
+                                ? theme.primaryColor
+                                : theme.dividerColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -171,7 +175,6 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                   ),
               ],
             ),
-
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -186,7 +189,7 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -209,53 +212,48 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                   const SizedBox(height: 12),
                   Text(
                     widget.product.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     'Rs. ${widget.product.price.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: Theme.of(context).primaryColor,
+                      color: theme.primaryColor,
                     ),
                   ),
-
                   const Divider(height: 40),
-
                   Text(
                     'Description',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.product.description,
-                    style: const TextStyle(
-                      fontSize: 15,
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.6,
-                      color: Colors.black87,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                        0.8,
+                      ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
                   Row(
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 20),
                       Text(
                         ' ${widget.product.rating} ',
-                        style: const TextStyle(
+                        style: theme.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
                         ),
                       ),
                       Text(
                         '(${widget.product.numReviews} Reviews)',
-                        style: const TextStyle(color: Colors.grey),
+                        style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -265,17 +263,21 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
           ],
         ),
       ),
-
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
-        padding: const EdgeInsets.all(16.0),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 16,
+        ),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
-              offset: Offset(0, -2),
+              offset: const Offset(0, -2),
             ),
           ],
         ),
@@ -310,7 +312,7 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
       child: ElevatedButton(
         onPressed: null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey.shade400,
+          backgroundColor: Colors.grey.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -385,7 +387,6 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
               color: Colors.white,
               size: 30,
             ),
-
             onPressed: _quantity >= widget.product.countInStock
                 ? null
                 : () => _handleCartAction(_quantity + 1),
