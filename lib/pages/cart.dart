@@ -28,7 +28,16 @@ class _CartState extends State<Cart> {
 
   Future<void> _loadCart() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) return;
+
+    if (!auth.isAuthenticated) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _cartItems = [];
+        });
+      }
+      return;
+    }
 
     try {
       final items = await CartService.fetchCart(auth.userId!, auth.token!);
@@ -36,7 +45,6 @@ class _CartState extends State<Cart> {
       if (mounted) {
         setState(() {
           _cartItems = items;
-
           _subtotal = _cartItems.fold(0.0, (sum, item) => sum + item.total);
           _isLoading = false;
         });
@@ -47,9 +55,12 @@ class _CartState extends State<Cart> {
   }
 
   double get _shippingFee {
-    if (_subtotal >= freeShippingThreshold || _subtotal == 0) {
+    if (_subtotal <= 0) return 0.00;
+
+    if (_subtotal >= (freeShippingThreshold - 0.01)) {
       return 0.00;
     }
+
     return standardShippingFee;
   }
 
@@ -100,7 +111,7 @@ class _CartState extends State<Cart> {
     }
   }
 
-  void _checkout() {
+  void _checkout() async {
     if (_cartItems.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -121,12 +132,16 @@ class _CartState extends State<Cart> {
         )
         .toList();
 
-    Navigator.of(context).push(
+    final bool? orderPlaced = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) =>
             CheckoutScreen(totalAmount: _subtotal, cartItems: itemsForBackend),
       ),
     );
+
+    if (orderPlaced == true) {
+      _loadCart();
+    }
   }
 
   @override
@@ -147,7 +162,7 @@ class _CartState extends State<Cart> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cartItems.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -161,6 +176,15 @@ class _CartState extends State<Cart> {
                     'Your cart is empty!',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
+                  if (!Provider.of<AuthProvider>(context).isAuthenticated) ...[
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushNamed('/signin');
+                      },
+                      child: const Text('Login to see your saved items'),
+                    ),
+                  ],
                 ],
               ),
             )

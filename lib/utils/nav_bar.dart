@@ -1,4 +1,4 @@
-import 'package:cybercart/utils/messages_screen.dart';
+import 'package:cybercart/pages/messages.dart';
 import 'package:cybercart/pages/cart.dart';
 import 'package:cybercart/pages/profile.dart';
 import 'package:flutter/material.dart';

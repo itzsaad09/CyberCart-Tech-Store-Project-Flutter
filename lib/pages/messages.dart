@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/order_service.dart';
 
-// Enum and Model moved here for easy copy-pasting
 enum MessageType { support, system, delivery }
 
 class ChatPreview {
@@ -35,23 +34,23 @@ class MessagesScreen extends StatefulWidget {
 }
 
 class _MessagesScreenState extends State<MessagesScreen> {
-  // Key to force refresh the FutureBuilder when marking as read
   Key _refreshKey = UniqueKey();
 
   Future<void> _markAllAsRead() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    
-    // Call the backend endpoint added to order_service
+
+    if (auth.userId == null || auth.token == null) return;
+
     await OrderService.markAllNotificationsAsRead(auth.userId!, auth.token!);
 
     setState(() {
-      _refreshKey = UniqueKey(); // Refresh the list UI to update unread badges
+      _refreshKey = UniqueKey();
     });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("All messages marked as read"), 
+          content: Text("All messages marked as read"),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -64,74 +63,79 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final bool canFetchData =
+        auth.isAuthenticated && auth.userId != null && auth.token != null;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Messages"),
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: isDark ? Colors.white : Colors.black,
-        // --- STATUS BAR FIX ---
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         ),
         actions: [
-          TextButton(
-            onPressed: _markAllAsRead,
-            child: Text(
-              "Mark all as read",
-              style: TextStyle(
-                color: theme.primaryColor, 
-                fontWeight: FontWeight.bold,
+          if (canFetchData)
+            TextButton(
+              onPressed: _markAllAsRead,
+              child: Text(
+                "Mark all as read",
+                style: TextStyle(
+                  color: theme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
           const SizedBox(width: 8),
         ],
       ),
-      body: FutureBuilder<List<ChatPreview>>(
-        key: _refreshKey,
-        // Fetches real notifications created in orderController.js
-        future: OrderService.fetchOrderNotifications(auth.userId!, auth.token!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: !canFetchData
+          ? _buildEmptyState(theme)
+          : FutureBuilder<List<ChatPreview>>(
+              key: _refreshKey,
+              future: OrderService.fetchOrderNotifications(
+                auth.userId!,
+                auth.token!,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error loading messages: ${snapshot.error}"));
-          }
+                if (snapshot.hasError) {
+                  return Center(child: Text("Error loading messages"));
+                }
 
-          final chats = snapshot.data ?? [];
+                final chats = snapshot.data ?? [];
 
-          if (chats.isEmpty) {
-            return _buildEmptyState(theme);
-          }
+                if (chats.isEmpty) {
+                  return _buildEmptyState(theme);
+                }
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            itemCount: chats.length,
-            separatorBuilder: (context, index) => Divider(
-              indent: 80,
-              endIndent: 20,
-              color: isDark ? Colors.grey[800] : Colors.grey[200],
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  itemCount: chats.length,
+                  separatorBuilder: (context, index) => Divider(
+                    indent: 80,
+                    endIndent: 20,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                  itemBuilder: (context, index) {
+                    final chat = chats[index];
+                    return _buildChatTile(chat, theme, isDark);
+                  },
+                );
+              },
             ),
-            itemBuilder: (context, index) {
-              final chat = chats[index];
-              return _buildChatTile(chat, theme, isDark);
-            },
-          );
-        },
-      ),
     );
   }
 
   Widget _buildChatTile(ChatPreview chat, ThemeData theme, bool isDark) {
     return ListTile(
-      onTap: () {
-        // Future: Navigate to Order Detail or specific chat room
-      },
+      onTap: () {},
       leading: _buildAvatar(chat, theme, isDark),
       title: Text(
         chat.senderName,
@@ -146,8 +150,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: isDark ? Colors.grey[400] : Colors.grey[600],
-          // Bold the text if it's unread
-          fontWeight: chat.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+          fontWeight: chat.unreadCount > 0
+              ? FontWeight.w600
+              : FontWeight.normal,
         ),
       ),
       trailing: Column(
@@ -182,10 +187,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Widget _buildAvatar(ChatPreview chat, ThemeData theme, bool isDark) {
     if (chat.type == MessageType.system) {
-      // Dynamic icon based on message content
       IconData iconData = Icons.local_shipping_outlined;
-      if (chat.lastMessage.contains("Delivered")) iconData = Icons.check_circle_outline;
-      if (chat.lastMessage.contains("Placed")) iconData = Icons.shopping_bag_outlined;
+      if (chat.lastMessage.contains("Delivered"))
+        iconData = Icons.check_circle_outline;
+      if (chat.lastMessage.contains("Placed"))
+        iconData = Icons.shopping_bag_outlined;
 
       return CircleAvatar(
         radius: 28,

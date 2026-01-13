@@ -26,12 +26,12 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _currentStep = 0;
 
-  // --- Backend Data State ---
+  
   List<ShippingAddress> _availableAddresses = [];
   bool _isLoadingAddresses = true;
   ShippingAddress? _selectedAddress;
 
-  // --- Schedule Delivery State ---
+  
   DateTime? _selectedDeliveryDate;
   String? _selectedTimeSlot;
 
@@ -47,7 +47,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   DateTime get _minDate => DateTime.now().add(const Duration(days: 3));
   DateTime get _maxDate => DateTime.now().add(const Duration(days: 10));
 
-  // --- Payment State ---
+  
   PaymentMethod _selectedPayment = const PaymentMethod(
     type: 'Cash on Delivery',
     details: 'Pay upon delivery',
@@ -58,7 +58,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     const PaymentMethod(type: 'Card', details: 'Visa ending in 4242'),
   ];
 
-  // --- Controllers ---
+  
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
@@ -75,10 +75,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchAddresses(); // Initial fetch
+    _fetchAddresses(); 
   }
 
-  // Fetch logic from your working addresses screen
+  
   Future<void> _fetchAddresses() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!auth.isAuthenticated) return;
@@ -153,16 +153,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
       return;
     }
+    
+    void _showSuccessAnimation() {
+      showDialog(
+        context: context,
+        barrierDismissible: false, 
+        builder: (BuildContext context) {
+          return const Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: OrderSuccessDialog(),
+          );
+        },
+      );
+
+      
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          
+          Navigator.of(context, rootNavigator: true).pop();
+          Navigator.of(context).pop(true);
+        }
+      });
+    }
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     const double shippingFee = 150.0;
     
-    // Format payment method for backend
+    
     final String paymentMethodKey = _selectedPayment.type == 'Card' 
         ? 'credit_card' 
         : 'cash_on_delivery';
 
-    // Prepare order data matching your orderController.js
+    
     final result = await OrderService.placeOrder(
       userId: auth.userId!,
       token: auth.token!,
@@ -189,11 +212,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Order Placed Successfully!'), backgroundColor: Colors.green),
-      );
-      // Return to home and clear navigation stack
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      _showSuccessAnimation();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message'] ?? 'Failed to place order'), backgroundColor: Colors.red),
@@ -376,12 +395,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildReviewStep() {
+    
+    const double freeShippingThreshold = 1999.0;
+    const double standardShippingFee = 150.0;
+
+    
+    double appliedShipping = widget.totalAmount >= freeShippingThreshold ? 0.0 : standardShippingFee;
+    double finalPayable = widget.totalAmount + appliedShipping;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Total Payable Amount:', style: Theme.of(context).textTheme.titleLarge),
+        Text('Summary:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 8),
-        Text('Rs. ${widget.totalAmount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Subtotal:'),
+            Text('Rs. ${widget.totalAmount.toStringAsFixed(2)}'),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Shipping Fee:'),
+            Text(appliedShipping == 0 ? 'FREE' : 'Rs. ${appliedShipping.toStringAsFixed(2)}', 
+                 style: TextStyle(color: appliedShipping == 0 ? Colors.green : null)),
+          ],
+        ),
+        const Divider(),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Total Payable:', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text('Rs. ${finalPayable.toStringAsFixed(2)}', 
+                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                   fontWeight: FontWeight.bold, 
+                   color: Theme.of(context).primaryColor
+                 )),
+          ],
+        ),
         const Divider(height: 30),
         if (_selectedAddress != null)
           _buildReviewSection(
@@ -451,7 +504,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-// --- Global UI Helpers ---
+
 
 void _showAddressSelector(BuildContext context, {required _CheckoutScreenState state}) {
   showModalBottomSheet(
@@ -546,7 +599,7 @@ void _showAddAddressForm(BuildContext context, {required _CheckoutScreenState st
                     postalCode: state._postalController.text,
                     country: state._countryController.text,
                   );
-                  // Call Service mirroring MyAddressesScreen logic
+                  
                   bool success = await AddressService.addAddress(auth.userId!, newAddr);
                   if (success) {
                     await state._fetchAddresses();
@@ -609,5 +662,75 @@ class CardExpiryFormatter extends TextInputFormatter {
       if (i == 1 && text.length > 2) buffer.write('/');
     }
     return newValue.copyWith(text: buffer.toString(), selection: TextSelection.collapsed(offset: buffer.length));
+  }
+}
+
+class OrderSuccessDialog extends StatefulWidget {
+  const OrderSuccessDialog({super.key});
+
+  @override
+  State<OrderSuccessDialog> createState() => _OrderSuccessDialogState();
+}
+
+class _OrderSuccessDialogState extends State<OrderSuccessDialog> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              )
+            ],
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 100),
+              SizedBox(height: 16),
+              Text(
+                "Order Placed!",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                "Thank you for shopping.",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

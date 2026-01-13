@@ -126,7 +126,7 @@ class _ProductViewScreenState extends State<ProductViewScreen> {
                 Container(
                   height: 380,
                   width: double.infinity,
-                  // Use cardColor for the image background to provide slight contrast in dark mode
+
                   color: isDark ? theme.cardColor : Colors.white,
                   child: widget.product.images.isNotEmpty
                       ? PageView.builder(
