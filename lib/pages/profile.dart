@@ -56,8 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
 
-                // Call the global logout logic from AuthProvider
-                // This clears SharedPreferences and Google Sign-In via AuthService
                 await Provider.of<AuthProvider>(
                   context,
                   listen: false,
@@ -155,7 +153,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to the AuthProvider to automatically react to login/logout
     final authProvider = Provider.of<AuthProvider>(context);
 
     if (authProvider.isLoading) {
@@ -185,7 +182,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return KeyedSubtree(
           key: const ValueKey('login_screen'),
           child: LoginScreen(
-            // PROVIDE THE MISSING PARAMETERS HERE
             onLoginSuccess: _handleLoginSuccess,
             onNavigateToSignup: _navigateToSignup,
           ),
@@ -202,7 +198,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return KeyedSubtree(
           key: const ValueKey('login_screen_fallback'),
           child: LoginScreen(
-            // PROVIDE THE MISSING PARAMETERS HERE
             onLoginSuccess: _handleLoginSuccess,
             onNavigateToSignup: _navigateToSignup,
           ),

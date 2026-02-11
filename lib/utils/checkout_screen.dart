@@ -58,7 +58,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     const PaymentMethod(type: 'Card', details: 'Visa ending in 4242'),
   ];
 
-  
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _address1Controller = TextEditingController();
   final TextEditingController _address2Controller = TextEditingController();
@@ -167,10 +166,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
       );
 
-      
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
-          
           Navigator.of(context, rootNavigator: true).pop();
           Navigator.of(context).pop(true);
         }

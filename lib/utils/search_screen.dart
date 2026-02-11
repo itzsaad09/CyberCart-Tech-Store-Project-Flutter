@@ -98,7 +98,7 @@ class _SearchScreenState extends State<SearchScreen> {
           controller: _searchController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: "Search CyberCart...",
+            hintText: "Search Products...",
             border: InputBorder.none,
             suffixIcon: _currentQuery.isNotEmpty
                 ? IconButton(
